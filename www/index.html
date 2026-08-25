@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lector GiftCard</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto; }
+        #reader { width: 100%; margin-bottom: 20px; }
+        .card-panel { border: 2px solid #333; padding: 15px; border-radius: 8px; display: none; }
+        .charge-section { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px; }
+        input, button { padding: 10px; margin-top: 5px; width: 100%; box-sizing: border-box; }
+        button { background-color: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <h2>Sistema de Gift Cards</h2>
+    
+    <button onclick="mostrarHistorial()" style="background-color: #28a745; margin-bottom: 15px;">Ver Resumen de Tarjetas</button>
+    <button onclick="cerrarHistorial()" id="btn-cerrar-hist" style="display: none; background-color: #dc3545; margin-bottom: 15px;">Volver al Escáner</button>
+
+    <div id="reader"></div>
+
+    <div id="card-panel" class="card-panel">
+        <h3>Tarjeta: <span id="card-id">---</span></h3>
+        <p>Saldo Inicial: $<span id="card-initial">0</span></p>
+        <h2 style="color: green;">Saldo Disponible: $<span id="card-balance">0</span></h2>
+
+        <div class="charge-section">
+            <label for="charge-amount">Monto de la compra:</label>
+            <input type="number" id="charge-amount" placeholder="Ej: 15000">
+            <button onclick="cobrar()">Descontar Saldo</button>
+        </div>
+    </div>
+
+    <div id="historial-panel" style="display: none;">
+        <h3>Resumen General</h3>
+        <div id="lista-tarjetas"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
