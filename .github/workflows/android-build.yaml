@@ -20,7 +20,7 @@ jobs:
       run: npm install @capacitor/core @capacitor/cli @capacitor/android
 
     - name: Sincronizar Capacitor
-      run: npx cap sync android
+  run: npx @capacitor/cli sync android
 
     - name: Configurar Java
       uses: actions/setup-java@v3
