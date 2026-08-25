@@ -1,0 +1,56 @@
+name: Android Build
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Instalar dependencias
+      run: npm install @capacitor/core @capacitor/cli @capacitor/android
+
+    - name: Sincronizar Capacitor
+      run: npx cap sync android
+
+    - name: Configurar Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Generar Keystore y Compilar Android
+      env:
+        STORE_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      run: |
+        # Decodificar el Keystore
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/mi-release-key.jks
+        
+        # Compilar APK y AAB
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleDebug
+        ./gradlew bundleRelease
+
+    - name: Subir APK de prueba
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug-apk
+        path: android/app/build/outputs/apk/debug/**/*.apk
+
+    - name: Subir AAB para Play Store
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-aab
+        path: android/app/build/outputs/bundle/release/**/*.aab
