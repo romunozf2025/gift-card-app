@@ -2,44 +2,162 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lector GiftCard</title>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistema de Gift Cards</title>
+
+    <!-- LIBRERÍAS 100% OFFLINE (Locales) -->
+    <script src="librerias/html5-qrcode.min.js" type="text/javascript"></script>
+    <script src="librerias/jspdf.umd.min.js"></script>
+    <script src="librerias/jspdf.plugin.autotable.min.js"></script>
+
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto; }
-        #reader { width: 100%; margin-bottom: 20px; }
-        .card-panel { border: 2px solid #333; padding: 15px; border-radius: 8px; display: none; }
-        .charge-section { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px; }
-        input, button { padding: 10px; margin-top: 5px; width: 100%; box-sizing: border-box; }
-        button { background-color: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; }
-        button:hover { background-color: #0056b3; }
+        :root {
+            --bg-pastel: #fdfbf7; --primary-pastel: #a3c4f3; --secondary-pastel: #f1c0e8;
+            --text-color: #4a4e69; --card-bg: #ffffff; --ok-bg: #d4edda;
+            --ok-border: #c3e6cb; --ok-text: #155724; --error-bg: #f8d7da;
+            --error-border: #f5c6cb; --error-text: #721c24;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0;
+            background-color: var(--bg-pastel); color: var(--text-color);
+            display: flex; flex-direction: column; min-height: 100vh;
+            user-select: none; -webkit-user-select: none;
+        }
+
+        header {
+            background-color: var(--card-bg); padding: 15px 20px; text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-bottom: 4px solid var(--primary-pastel);
+        }
+        header h2 { margin: 0; font-size: 1.4rem; }
+
+        .contenedor-principal {
+            flex: 1; display: flex; flex-direction: column; gap: 20px; padding: 20px;
+            width: 100%; max-width: 700px; margin: 0 auto; box-sizing: border-box;
+        }
+
+        .panel-config, .panel {
+            background-color: var(--card-bg); border-radius: 15px; padding: 20px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.06); text-align: center; display: flex;
+            flex-direction: column; gap: 15px; align-items: center; width: 100%; box-sizing: border-box;
+        }
+
+        .panel-titulo { margin-top: 0; text-align: center; font-size: 1.1rem; margin-bottom: 15px; }
+
+        .btn-accion {
+            display: inline-block; padding: 12px 20px; border-radius: 8px; font-weight: 600;
+            cursor: pointer; transition: 0.3s; text-align: center; width: 100%;
+            border: 2px solid; box-sizing: border-box; font-family: inherit; font-size: 1rem;
+        }
+        .btn-accion:active { transform: scale(0.95); }
+
+        /* Estilos seguros para los botones internos que genera la librería Html5QrcodeScanner */
+        #reader { width: 100%; min-height: 250px; border-radius: 8px; overflow: hidden; background: #fff; }
+        #reader__dashboard_section_csr button, #reader button {
+            padding: 10px 15px !important; background-color: #007bff !important;
+            color: white !important; border: none !important; border-radius: 5px !important;
+            font-weight: bold !important; cursor: pointer !important; margin-top: 10px !important;
+        }
+        #reader select { padding: 8px !important; border-radius: 5px !important; margin-top: 5px !important; width: 100% !important; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(3px); 
+            display: none; justify-content: center; align-items: center; z-index: 9999; 
+        }
+
+        .modal-content {
+            background-color: var(--card-bg); width: 90%; max-width: 400px;
+            border-radius: 15px; box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+            padding: 20px; animation: zoomIn 0.3s ease; text-align: center;
+        }
+
+        @keyframes zoomIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        #resultado-box { padding: 15px; border-radius: 8px; font-size: 1.1rem; font-weight: 600; text-align: center; margin-bottom: 10px; }
+        
+        .info-tarjeta {
+            display: none; padding: 15px; background-color: #f4f6f9;
+            border-radius: 10px; border-left: 5px solid var(--secondary-pastel); text-align: left;
+        }
+        .info-tarjeta p { margin: 8px 0; font-size: 0.95rem; }
+        
+        input[type="number"], select {
+            width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px;
+            border: 1px solid #ccc; box-sizing: border-box; font-size: 1rem;
+        }
+
+        .export-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 10px; }
+
+        footer { text-align: center; padding: 15px; font-size: 0.85rem; color: #6c757d; background-color: var(--card-bg); border-top: 1px solid #e9ecef; margin-top: auto; }
     </style>
 </head>
 <body>
 
-    <h2>Sistema de Gift Cards</h2>
-    
-    <button onclick="mostrarHistorial()" style="background-color: #28a745; margin-bottom: 15px;">Ver Resumen de Tarjetas</button>
-    <button onclick="cerrarHistorial()" id="btn-cerrar-hist" style="display: none; background-color: #dc3545; margin-bottom: 15px;">Volver al Escáner</button>
+    <header>
+        <h2>🎁 Sistema de Gift Cards</h2>
+    </header>
 
-    <div id="reader"></div>
+    <div class="contenedor-principal">
+        <div class="panel-config">
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <button onclick="sincronizarDesdeGoogle()" class="btn-accion" style="background-color: #d4edda; border-color: #c3e6cb; color: #155724;">🔄 Sincronizar Tarjetas</button>
+                <button onclick="mostrarHistorial()" class="btn-accion" style="background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460;">📊 Resumen General</button>
+            </div>
+            <button id="btn-volver" onclick="cerrarHistorial()" class="btn-accion" style="display: none; background-color: #f8d7da; border-color: #f5c6cb; color: #721c24;">🔙 Volver al Escáner</button>
+        </div>
 
-    <div id="card-panel" class="card-panel">
-        <h3>Tarjeta: <span id="card-id">---</span></h3>
-        <p>Saldo Inicial: $<span id="card-initial">0</span></p>
-        <h2 style="color: green;">Saldo Disponible: $<span id="card-balance">0</span></h2>
+        <!-- PANEL DE ESCANEO -->
+        <div class="panel" id="panel-escaneo">
+            <h3 class="panel-titulo">Escanear Tarjeta</h3>
+            <div id="reader"></div>
+        </div>
 
-        <div class="charge-section">
-            <label for="charge-amount">Monto de la compra:</label>
-            <input type="number" id="charge-amount" placeholder="Ej: 15000">
-            <button onclick="cobrar()">Descontar Saldo</button>
+        <!-- PANEL DE HISTORIAL GENERAL Y REPORTES -->
+        <div class="panel" id="historial-panel" style="display: none;">
+            <h3 class="panel-titulo">Exportar Reporte de Ventas</h3>
+            <div style="width: 100%; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px;">
+                <label for="filtro-tiempo" style="font-weight: bold; font-size: 0.9rem;">Filtrar transacciones por fecha:</label>
+                <select id="filtro-tiempo">
+                    <option value="hoy">📅 Solo Hoy</option>
+                    <option value="semana">📆 Última Semana (7 días)</option>
+                    <option value="quincena">🗓️ Última Quincena (15 días)</option>
+                    <option value="mes">📅 Último Mes (30 días)</option>
+                    <option value="todo">📂 Historial Histórico Completo</option>
+                </select>
+                <div class="export-grid">
+                    <button onclick="exportarReporte('csv')" class="btn-accion" style="background-color: #28a745; color: white; border: none;">📥 Exportar CSV</button>
+                    <button onclick="exportarReporte('pdf')" class="btn-accion" style="background-color: #dc3545; color: white; border: none;">📄 Exportar PDF</button>
+                </div>
+            </div>
+
+            <h3 class="panel-titulo">Estado Actual de Tarjetas</h3>
+            <div id="lista-tarjetas" style="width: 100%; text-align: left;"></div>
         </div>
     </div>
 
-    <div id="historial-panel" style="display: none;">
-        <h3>Resumen General</h3>
-        <div id="lista-tarjetas"></div>
+    <!-- MODAL DE COBRO E INFORMACIÓN -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <div id="resultado-box"></div>
+            <div id="info-tarjeta" class="info-tarjeta">
+                <p><strong>💳 Tarjeta ID:</strong> <span id="dato-id"></span></p>
+                <p><strong>💰 Monto Inicial:</strong> $<span id="dato-inicial"></span></p>
+                <p><strong>📅 Vencimiento:</strong> <span id="dato-vencimiento"></span></p>
+                <p><strong>💵 Saldo Disponible:</strong> $<span id="dato-saldo" style="color: green; font-weight: bold;"></span></p>
+                
+                <div style="margin-top: 15px; border-top: 1px solid #dee2e6; padding-top: 10px;">
+                    <label for="charge-amount" style="font-size: 0.9rem; font-weight: bold;">Descontar Monto:</label>
+                    <input type="number" id="charge-amount" placeholder="Ej: 100">
+                    <button onclick="cobrarSaldo()" class="btn-accion" style="background-color: #007bff; border-color: #0056b3; color: white; margin-top: 10px;">Descontar Saldo</button>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <footer>
+        Sistema de Gift Cards - Offline Ready
+    </footer>
 
     <script src="app.js"></script>
 </body>
