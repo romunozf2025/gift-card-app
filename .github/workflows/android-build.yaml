@@ -44,29 +44,14 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Generar Keystore y Compilar Android
-        env:
-          STORE_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      - name: Compilar APK de prueba (Debug)
         run: |
-          # Decodificar el Keystore
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/mi-release-key.jks
-          
-          # Compilar APK y AAB
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
-          ./gradlew bundleRelease
 
       - name: Subir APK de prueba
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
           path: android/app/build/outputs/apk/debug/**/*.apk
-
-      - name: Subir AAB para Play Store
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-aab
-          path: android/app/build/outputs/bundle/release/**/*.aab
