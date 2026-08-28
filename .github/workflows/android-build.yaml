@@ -27,6 +27,17 @@ jobs:
           chmod +x node_modules/.bin/cap
           npx cap sync android
 
+      - name: Actualizar SDKs y AGP
+        run: |
+          sed -i 's/minSdkVersion = .*/minSdkVersion = 23/g' android/variables.gradle
+          sed -i 's/compileSdkVersion = .*/compileSdkVersion = 35/g' android/variables.gradle
+          sed -i 's/targetSdkVersion = .*/targetSdkVersion = 35/g' android/variables.gradle
+          sed -i -E 's/com\.android\.tools\.build:gradle:[0-9\.]+/com.android.tools.build:gradle:8.5.0/g' android/build.gradle
+
+      - name: Actualizar Gradle para soportar Java 21
+        run: |
+          sed -i 's/distributionUrl=.*/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.7-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties
+
       - name: Configurar Java
         uses: actions/setup-java@v4
         with:
