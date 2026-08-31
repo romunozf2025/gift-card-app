@@ -351,58 +351,33 @@ async function exportarReporte(formato) {
     }
 }
 
-// Función definitiva para compartir archivos reales (PDF/CSV) a WhatsApp u otras apps
-async function compartirArchivoNativo(blob, fileName) {  
-    try {  
-        const file = new File([blob], fileName, { type: blob.type });
-
-        // 1. API Web Nativa (Abre el menú de compartir de Android directamente)
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-                title: 'Reporte de Ventas',
-                text: 'Adjunto el reporte de ventas.',
-                files: [file]
+// LA MISMA FÓRMULA GANADORA DE TU APP DE ASISTENCIA
+async function compartirArchivoNativo(blob, fileName) {
+    try {
+        // Comprueba PRIMERO si está en la app nativa
+        if (window.Capacitor && window.Capacitor.isNative) {
+            const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader(); reader.onerror = reject;
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(blob);
             });
-            return; // Termina la ejecución si tuvo éxito
+            const Filesystem = window.Capacitor.Plugins.Filesystem;
+            const Share = window.Capacitor.Plugins.Share;
+            const writeResult = await Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' });
+            await Share.share({
+                title: 'Reporte de Ventas',
+                text: `Adjunto el reporte de ventas en formato ${fileName.split('.').pop().toUpperCase()}.`,
+                url: writeResult.uri, dialogTitle: 'Compartir Reporte'
+            });
+        } else {
+            // Si es computadora o web, usa esto
+            const file = new File([blob], fileName, { type: blob.type });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ title: 'Reporte de Ventas', files: [file] });
+            } else {
+                const url = URL.createObjectURL(blob); const a = document.createElement("a");
+                a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+            }
         }
-
-        // 2. Método Capacitor (Requiere que los plugins estén sincronizados)
-        if (window.Capacitor && window.Capacitor.isNative && window.Capacitor.Plugins.Share) {  
-            const base64Data = await new Promise((resolve, reject) => {  
-                const reader = new FileReader(); reader.onerror = reject;  
-                reader.onload = () => resolve(reader.result.split(',')[1]);  
-                reader.readAsDataURL(blob);  
-            });  
-            
-            const Filesystem = window.Capacitor.Plugins.Filesystem;  
-            const Share = window.Capacitor.Plugins.Share;  
-            
-            const writeResult = await Filesystem.writeFile({ 
-                path: fileName, 
-                data: base64Data, 
-                directory: 'CACHE' 
-            });  
-            
-            await Share.share({  
-                title: 'Reporte de Ventas',  
-                text: 'Adjunto el reporte de ventas.',  
-                url: writeResult.uri, 
-                dialogTitle: 'Compartir reporte con'  
-            });  
-            return;
-        } 
-        
-        // 3. Respaldo tradicional (Descarga directa en computadora)
-        const url = URL.createObjectURL(blob); 
-        const a = document.createElement("a");  
-        a.href = url; a.download = fileName; 
-        document.body.appendChild(a); 
-        a.click(); 
-        document.body.removeChild(a); 
-        URL.revokeObjectURL(url);  
-        
-    } catch (err) { 
-        console.error("Error al compartir:", err);
-        alert("Operación cancelada o error al compartir: " + err.message); 
-    }  
+    } catch (err) { alert("Hubo un error al intentar compartir el archivo."); }
 }
