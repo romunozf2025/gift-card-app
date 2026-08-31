@@ -35,7 +35,6 @@ async function sincronizarDesdeGoogle() {
         const btnSync = document.querySelector('button[onclick="sincronizarDesdeGoogle()"]');
         btnSync.textContent = "Sincronizando...";
         
-        // 1. Descargar las tarjetas maestras
         const respuestaTarjetas = await fetch(URL_GOOGLE_SHEET_TARJETAS);
         const datosCSV = await respuestaTarjetas.text();
         const lineas = datosCSV.replace(/\r/g, '').split('\n');
@@ -54,7 +53,6 @@ async function sincronizarDesdeGoogle() {
 
                 if (idTarjeta) {
                     if(!baseDeDatosTarjetas[idTarjeta]) nuevas++;
-                    // Reiniciamos saldos para reconstruir desde cero si reinstalamos
                     baseDeDatosTarjetas[idTarjeta] = {
                         id: idTarjeta,
                         monto_inicial: montoInicial,
@@ -66,12 +64,10 @@ async function sincronizarDesdeGoogle() {
             }
         }
 
-        // 2. Descargar las transacciones desde la nube (Apps Script)
         try {
             const respuestaTx = await fetch(URL_APPS_SCRIPT_TRANSACCIONES);
             const transaccionesNube = await respuestaTx.json();
             
-            // Aplicar cada compra a las tarjetas correspondientes
             transaccionesNube.forEach(tx => {
                 if (baseDeDatosTarjetas[tx.id]) {
                     baseDeDatosTarjetas[tx.id].historial_compras.push(tx);
@@ -104,31 +100,26 @@ function iniciarLector() {
 
 function onScanFailure(error) {}
 
-// Pausar cámara al escanear exitosamente
 function onScanSuccess(decodedText) {
     if (escaneoPausado) return;
     escaneoPausado = true;
     
-    // Congela la cámara
     if (html5QrcodeScanner) {
         html5QrcodeScanner.pause(true); 
     }
-    
     validarTarjeta(decodedText);
 }
 
-// Función para reanudar la cámara y cerrar la ventana
 function cerrarModal() {
     modalOverlay.style.display = 'none';
     tarjetaActualId = null;
     document.getElementById('charge-amount').value = '';
     
-    // Reactivar cámara
     if (html5QrcodeScanner) {
         html5QrcodeScanner.resume();
     }
     
-    setTimeout(() => { escaneoPausado = false; }, 1000); // 1 segundo de cooldown
+    setTimeout(() => { escaneoPausado = false; }, 1000);
 }
 
 window.onclick = function(event) {
@@ -188,7 +179,6 @@ function mostrarModal(tipo, mensaje, tarjeta) {
     modalOverlay.style.display = 'flex';
 }
 
-// Letrero de confirmación y guardado en la nube
 async function cobrarSaldo() {
     const inputMonto = document.getElementById('charge-amount');
     const montoCobro = parseFloat(inputMonto.value);
@@ -199,9 +189,8 @@ async function cobrarSaldo() {
     if (!montoCobro || montoCobro <= 0) return alert("Ingrese un monto válido a descontar.");
     if (montoCobro > tarjeta.saldo_actual) return alert("El monto supera el saldo disponible de la tarjeta.");
 
-    // Letrero de confirmación antes de la venta
     const confirmar = confirm(`¿Confirmas el descuento de $${montoCobro}?\nSaldo actual: $${tarjeta.saldo_actual}\nNuevo saldo quedará en: $${tarjeta.saldo_actual - montoCobro}`);
-    if (!confirmar) return; // Si dice "Cancelar", se aborta la venta
+    if (!confirmar) return; 
 
     tarjeta.saldo_actual -= montoCobro;
     
@@ -217,27 +206,23 @@ async function cobrarSaldo() {
     };
     
     tarjeta.historial_compras.push(nuevaCompra);
-
-    // Guarda localmente inmediato por si falla el internet
     localStorage.setItem('giftcardsDB', JSON.stringify(baseDeDatosTarjetas));
-    
-    // Intentar guardar en Google Sheets en segundo plano
     guardarEnNube(nuevaCompra);
 
     alert(`✅ Cobro exitoso. Nuevo saldo: $${tarjeta.saldo_actual}`);
-    cerrarModal(); // Cierra el modal y reactiva la cámara
+    cerrarModal(); 
 }
 
 async function guardarEnNube(compraData) {
     try {
         await fetch(URL_APPS_SCRIPT_TRANSACCIONES, {
             method: 'POST',
-            mode: 'no-cors', // Evita bloqueos de seguridad en Android
+            mode: 'no-cors',
             body: JSON.stringify(compraData),
             headers: { "Content-Type": "text/plain;charset=utf-8" }
         });
     } catch(error) {
-        console.error("Transacción guardada localmente. No se pudo enviar a la nube en este momento.");
+        console.error("Transacción guardada localmente.");
     }
 }
 
@@ -277,107 +262,150 @@ function cerrarHistorial() {
     cerrarModal();
 }
 
+// ----------------------------------------------------
+// EXPORTACIÓN A PRUEBA DE FALLOS CON EFECTO VISUAL
+// ----------------------------------------------------
 async function exportarReporte(formato) {
-    const filtro = document.getElementById('filtro-tiempo').value;
-    const ahora = new Date();
-    const limiteInicio = new Date();
+    // 1. Identificar botón y poner efecto de carga (como en la app de asistencia)
+    const botones = document.querySelectorAll('.export-grid button');
+    const btnActual = formato === 'csv' ? botones[0] : botones[1];
+    const textoOriginal = btnActual.innerText;
     
-    if (filtro === 'hoy') {
-        limiteInicio.setHours(0,0,0,0);
-    } else if (filtro === 'semana') {
-        limiteInicio.setDate(ahora.getDate() - 7);
-    } else if (filtro === 'quincena') {
-        limiteInicio.setDate(ahora.getDate() - 15);
-    } else if (filtro === 'mes') {
-        limiteInicio.setMonth(ahora.getMonth() - 1);
-    } else {
-        limiteInicio.setTime(0);
-    }
+    btnActual.innerText = "⌛ Procesando...";
+    btnActual.disabled = true;
 
-    let datosReporte = [];
-    let totalDescontado = 0;
-
-    for (const id in baseDeDatosTarjetas) {
-        const tarjeta = baseDeDatosTarjetas[id];
-        tarjeta.historial_compras.forEach(compra => {
-            let fechaCompra = compra.timestamp ? new Date(compra.timestamp) : new Date();
-            if (fechaCompra >= limiteInicio) {
-                datosReporte.push([
-                    tarjeta.id, 
-                    compra.fecha, 
-                    `$${compra.monto.toFixed(2)}`,
-                    `$${tarjeta.saldo_actual.toFixed(2)}`
-                ]);
-                totalDescontado += compra.monto;
-            }
-        });
-    }
-
-    if (datosReporte.length === 0) return alert("No hay transacciones registradas en el periodo seleccionado.");
-
-    const fileName = `Reporte_GiftCards_${filtro}_${ahora.getTime()}`;
-
-    if (formato === 'csv') {
-        let csvContent = "ID Tarjeta,Fecha de Compra,Monto Descontado,Saldo Restante\n";
-        datosReporte.forEach(row => { csvContent += `"${row[0]}","${row[1]}","${row[2]}","${row[3]}"\n`; });
-        csvContent += `\n,,TOTAL DESCONTADO:, "$${totalDescontado.toFixed(2)}"\n`;
+    // 2. Proteger todo el proceso por si hay un error oculto
+    try {
+        const filtro = document.getElementById('filtro-tiempo').value;
+        const ahora = new Date();
+        const limiteInicio = new Date();
         
-        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-        const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
-        await compartirArchivoNativo(blob, `${fileName}.csv`);
-    } else {
-        if (!window.jspdf) return alert('Librería PDF no detectada.');
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        doc.setFontSize(16);
-        doc.text(`Reporte de Ventas Gift Cards (${filtro.toUpperCase()})`, 14, 15);
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Generado: ${ahora.toLocaleString()}`, 14, 22);
-        doc.text(`Total Generado en el periodo: $${totalDescontado.toFixed(2)}`, 14, 28);
+        if (filtro === 'hoy') {
+            limiteInicio.setHours(0,0,0,0);
+        } else if (filtro === 'semana') {
+            limiteInicio.setDate(ahora.getDate() - 7);
+        } else if (filtro === 'quincena') {
+            limiteInicio.setDate(ahora.getDate() - 15);
+        } else if (filtro === 'mes') {
+            limiteInicio.setMonth(ahora.getMonth() - 1);
+        } else {
+            limiteInicio.setTime(0);
+        }
 
-        doc.autoTable({
-            startY: 32,
-            head: [['ID Tarjeta', 'Fecha de Compra', 'Monto Descontado', 'Saldo Restante']],
-            body: datosReporte,
-            theme: 'striped',
-            headStyles: { fillColor: [0, 123, 255] } 
-        });
+        let datosReporte = [];
+        let totalDescontado = 0;
 
-        const pdfBuffer = doc.output('arraybuffer');
-        const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
-        await compartirArchivoNativo(blob, `${fileName}.pdf`);
+        for (const id in baseDeDatosTarjetas) {
+            const tarjeta = baseDeDatosTarjetas[id];
+            tarjeta.historial_compras.forEach(compra => {
+                let fechaCompra = compra.timestamp ? new Date(compra.timestamp) : new Date();
+                if (fechaCompra >= limiteInicio) {
+                    datosReporte.push([
+                        tarjeta.id, 
+                        compra.fecha, 
+                        `$${compra.monto.toFixed(2)}`,
+                        `$${tarjeta.saldo_actual.toFixed(2)}`
+                    ]);
+                    totalDescontado += compra.monto;
+                }
+            });
+        }
+
+        if (datosReporte.length === 0) {
+            alert("No hay transacciones registradas en el periodo seleccionado.");
+            return; // Termina aquí si no hay datos
+        }
+
+        const fileName = `Reporte_GiftCards_${filtro}_${ahora.getTime()}`;
+
+        if (formato === 'csv') {
+            let csvContent = "ID Tarjeta,Fecha de Compra,Monto Descontado,Saldo Restante\n";
+            datosReporte.forEach(row => { csvContent += `"${row[0]}","${row[1]}","${row[2]}","${row[3]}"\n`; });
+            csvContent += `\n,,TOTAL DESCONTADO:, "$${totalDescontado.toFixed(2)}"\n`;
+            
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+            await compartirArchivoNativo(blob, `${fileName}.csv`);
+        } else {
+            if (!window.jspdf) throw new Error('Librería jsPDF no se cargó correctamente en el HTML.');
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFontSize(16);
+            doc.text(`Reporte de Ventas Gift Cards (${filtro.toUpperCase()})`, 14, 15);
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Generado: ${ahora.toLocaleString()}`, 14, 22);
+            doc.text(`Total Generado en el periodo: $${totalDescontado.toFixed(2)}`, 14, 28);
+
+            doc.autoTable({
+                startY: 32,
+                head: [['ID Tarjeta', 'Fecha de Compra', 'Monto Descontado', 'Saldo Restante']],
+                body: datosReporte,
+                theme: 'striped',
+                headStyles: { fillColor: [0, 123, 255] } 
+            });
+
+            const pdfBuffer = doc.output('arraybuffer');
+            const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+            await compartirArchivoNativo(blob, `${fileName}.pdf`);
+        }
+    } catch (error) {
+        // SI ALGO FALLA, AHORA LO VERÁS EN PANTALLA
+        alert("❌ Error interno: " + error.message);
+    } finally {
+        // 3. Devolver el botón a su estado normal
+        btnActual.innerText = textoOriginal;
+        btnActual.disabled = false;
     }
 }
 
-// LA MISMA FÓRMULA GANADORA DE TU APP DE ASISTENCIA
 async function compartirArchivoNativo(blob, fileName) {
     try {
-        // Comprueba PRIMERO si está en la app nativa
         if (window.Capacitor && window.Capacitor.isNative) {
+            
+            // Verificación estricta de que los plugins existan
+            if (!window.Capacitor.Plugins.Filesystem || !window.Capacitor.Plugins.Share) {
+                throw new Error("Los plugins de Capacitor no están integrados en el APK.");
+            }
+
             const base64Data = await new Promise((resolve, reject) => {
-                const reader = new FileReader(); reader.onerror = reject;
+                const reader = new FileReader(); 
+                reader.onerror = () => reject(new Error("Error leyendo los datos del reporte."));
                 reader.onload = () => resolve(reader.result.split(',')[1]);
                 reader.readAsDataURL(blob);
             });
+            
             const Filesystem = window.Capacitor.Plugins.Filesystem;
             const Share = window.Capacitor.Plugins.Share;
-            const writeResult = await Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' });
+            
+            const writeResult = await Filesystem.writeFile({ 
+                path: fileName, 
+                data: base64Data, 
+                directory: 'CACHE' 
+            });
+            
             await Share.share({
                 title: 'Reporte de Ventas',
-                text: `Adjunto el reporte de ventas en formato ${fileName.split('.').pop().toUpperCase()}.`,
-                url: writeResult.uri, dialogTitle: 'Compartir Reporte'
+                text: `Adjunto el reporte de ventas de tus Gift Cards.`,
+                url: writeResult.uri, 
+                dialogTitle: 'Compartir con...'
             });
         } else {
-            // Si es computadora o web, usa esto
+            // Entorno Web (Pruebas en PC)
             const file = new File([blob], fileName, { type: blob.type });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({ title: 'Reporte de Ventas', files: [file] });
             } else {
-                const url = URL.createObjectURL(blob); const a = document.createElement("a");
-                a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                const url = URL.createObjectURL(blob); 
+                const a = document.createElement("a");
+                a.href = url; a.download = fileName; 
+                document.body.appendChild(a); a.click(); 
+                document.body.removeChild(a); URL.revokeObjectURL(url);
             }
         }
-    } catch (err) { alert("Hubo un error al intentar compartir el archivo."); }
+    } catch (err) { 
+        throw new Error("Error al compartir: " + err.message); 
+    }
 }
