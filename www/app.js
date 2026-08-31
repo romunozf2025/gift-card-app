@@ -351,18 +351,23 @@ async function exportarReporte(formato) {
     }
 }
 
-// Solución nativa reforzada para exportar en Android
+// Función definitiva para compartir archivos reales (PDF/CSV) a WhatsApp u otras apps
 async function compartirArchivoNativo(blob, fileName) {  
     try {  
-        // 1. Verificamos si estamos en el celular (APK) con Capacitor
-        if (window.Capacitor && window.Capacitor.isNative) {  
-            
-            // Validamos que los plugins se hayan instalado correctamente
-            if (!window.Capacitor.Plugins.Filesystem || !window.Capacitor.Plugins.Share) {
-                alert("Faltan los plugins nativos. Ejecuta en tu terminal: npm install @capacitor/filesystem @capacitor/share");
-                return;
-            }
+        const file = new File([blob], fileName, { type: blob.type });
 
+        // 1. API Web Nativa (Abre el menú de compartir de Android directamente)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                title: 'Reporte de Ventas',
+                text: 'Adjunto el reporte de ventas.',
+                files: [file]
+            });
+            return; // Termina la ejecución si tuvo éxito
+        }
+
+        // 2. Método Capacitor (Requiere que los plugins estén sincronizados)
+        if (window.Capacitor && window.Capacitor.isNative && window.Capacitor.Plugins.Share) {  
             const base64Data = await new Promise((resolve, reject) => {  
                 const reader = new FileReader(); reader.onerror = reject;  
                 reader.onload = () => resolve(reader.result.split(',')[1]);  
@@ -372,41 +377,32 @@ async function compartirArchivoNativo(blob, fileName) {
             const Filesystem = window.Capacitor.Plugins.Filesystem;  
             const Share = window.Capacitor.Plugins.Share;  
             
-            // Creamos el archivo temporalmente en el caché del teléfono
             const writeResult = await Filesystem.writeFile({ 
                 path: fileName, 
                 data: base64Data, 
                 directory: 'CACHE' 
             });  
             
-            // Abrimos el menú nativo de Android para compartir
             await Share.share({  
-                title: 'Reporte de Ventas Gift Cards',  
-                text: `Se adjunta el reporte solicitado: ${fileName}`,  
+                title: 'Reporte de Ventas',  
+                text: 'Adjunto el reporte de ventas.',  
                 url: writeResult.uri, 
-                dialogTitle: 'Exportar Reporte'  
+                dialogTitle: 'Compartir reporte con'  
             });  
+            return;
         } 
-        // 2. Método web para navegadores modernos
-        else if (navigator.share) {
-            const file = new File([blob], fileName, { type: blob.type });
-            await navigator.share({
-                title: 'Reporte de Ventas Gift Cards',
-                files: [file]
-            });
-        }
-        // 3. Método tradicional de descarga en PC
-        else {  
-            const url = URL.createObjectURL(blob); 
-            const a = document.createElement("a");  
-            a.href = url; a.download = fileName; 
-            document.body.appendChild(a); 
-            a.click(); 
-            document.body.removeChild(a); 
-            URL.revokeObjectURL(url);  
-        }  
+        
+        // 3. Respaldo tradicional (Descarga directa en computadora)
+        const url = URL.createObjectURL(blob); 
+        const a = document.createElement("a");  
+        a.href = url; a.download = fileName; 
+        document.body.appendChild(a); 
+        a.click(); 
+        document.body.removeChild(a); 
+        URL.revokeObjectURL(url);  
+        
     } catch (err) { 
-        console.error("Error al exportar:", err);
-        alert("Error al exportar: " + err.message); 
+        console.error("Error al compartir:", err);
+        alert("Operación cancelada o error al compartir: " + err.message); 
     }  
 }
