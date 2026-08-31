@@ -10,7 +10,7 @@ const infoTarjetaBox = document.getElementById('info-tarjeta');
 // URL del CSV Original de las Tarjetas maestras
 const URL_GOOGLE_SHEET_TARJETAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjIH2cId6_HAo4GWJvSkvmmyrwabBEp0HpV59dYtEjcK4EGOONCXBJqIX87TR74v82RDPNXePuMbgi/pub?output=csv"; 
 
-// ¡Tu nuevo enlace de Apps Script ya está aquí!
+// Tu enlace definitivo de Apps Script
 const URL_APPS_SCRIPT_TRANSACCIONES = "https://script.google.com/macros/s/AKfycbyBlKVhSwyNxLt2xCzGRYw97Seo-9mHn0UKmFHYgdqyJ26V8wnV07ga6vuz5EzTVzU/exec"; 
 
 window.onload = () => {
@@ -232,7 +232,7 @@ async function guardarEnNube(compraData) {
     try {
         await fetch(URL_APPS_SCRIPT_TRANSACCIONES, {
             method: 'POST',
-            mode: 'no-cors', // Solución para evitar bloqueos en Android
+            mode: 'no-cors', // Evita bloqueos de seguridad en Android
             body: JSON.stringify(compraData),
             headers: { "Content-Type": "text/plain;charset=utf-8" }
         });
@@ -351,24 +351,43 @@ async function exportarReporte(formato) {
     }
 }
 
-// Solución para permitir exportar archivos directo en Android
+// Solución nativa reforzada para exportar en Android
 async function compartirArchivoNativo(blob, fileName) {  
     try {  
+        // 1. Verificamos si estamos en el celular (APK) con Capacitor
         if (window.Capacitor && window.Capacitor.isNative) {  
+            
+            // Validamos que los plugins se hayan instalado correctamente
+            if (!window.Capacitor.Plugins.Filesystem || !window.Capacitor.Plugins.Share) {
+                alert("Faltan los plugins nativos. Ejecuta en tu terminal: npm install @capacitor/filesystem @capacitor/share");
+                return;
+            }
+
             const base64Data = await new Promise((resolve, reject) => {  
                 const reader = new FileReader(); reader.onerror = reject;  
                 reader.onload = () => resolve(reader.result.split(',')[1]);  
                 reader.readAsDataURL(blob);  
             });  
+            
             const Filesystem = window.Capacitor.Plugins.Filesystem;  
             const Share = window.Capacitor.Plugins.Share;  
-            const writeResult = await Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' });  
+            
+            // Creamos el archivo temporalmente en el caché del teléfono
+            const writeResult = await Filesystem.writeFile({ 
+                path: fileName, 
+                data: base64Data, 
+                directory: 'CACHE' 
+            });  
+            
+            // Abrimos el menú nativo de Android para compartir
             await Share.share({  
                 title: 'Reporte de Ventas Gift Cards',  
                 text: `Se adjunta el reporte solicitado: ${fileName}`,  
-                url: writeResult.uri, dialogTitle: 'Compartir Reporte'  
+                url: writeResult.uri, 
+                dialogTitle: 'Exportar Reporte'  
             });  
         } 
+        // 2. Método web para navegadores modernos
         else if (navigator.share) {
             const file = new File([blob], fileName, { type: blob.type });
             await navigator.share({
@@ -376,6 +395,7 @@ async function compartirArchivoNativo(blob, fileName) {
                 files: [file]
             });
         }
+        // 3. Método tradicional de descarga en PC
         else {  
             const url = URL.createObjectURL(blob); 
             const a = document.createElement("a");  
@@ -387,6 +407,6 @@ async function compartirArchivoNativo(blob, fileName) {
         }  
     } catch (err) { 
         console.error("Error al exportar:", err);
-        alert("Exportación cancelada o hubo un error al compartir el archivo."); 
+        alert("Error al exportar: " + err.message); 
     }  
 }
