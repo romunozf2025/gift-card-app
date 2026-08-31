@@ -10,8 +10,8 @@ const infoTarjetaBox = document.getElementById('info-tarjeta');
 // URL del CSV Original de las Tarjetas maestras
 const URL_GOOGLE_SHEET_TARJETAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjIH2cId6_HAo4GWJvSkvmmyrwabBEp0HpV59dYtEjcK4EGOONCXBJqIX87TR74v82RDPNXePuMbgi/pub?output=csv"; 
 
-// URL de tu base de datos de Transacciones (Apps Script)
-const URL_APPS_SCRIPT_TRANSACCIONES = "https://script.google.com/macros/s/AKfycbwxNNBqpiRafxS9wfg2FCKU1vBOw0A8BSwxoTBTae52SL1ydF1A1KdESpvS51g-z7vx/exec"; 
+// ¡Tu nuevo enlace de Apps Script ya está aquí!
+const URL_APPS_SCRIPT_TRANSACCIONES = "https://script.google.com/macros/s/AKfycbyBlKVhSwyNxLt2xCzGRYw97Seo-9mHn0UKmFHYgdqyJ26V8wnV07ga6vuz5EzTVzU/exec"; 
 
 window.onload = () => {
     cargarMemoriaLocal();
@@ -232,8 +232,9 @@ async function guardarEnNube(compraData) {
     try {
         await fetch(URL_APPS_SCRIPT_TRANSACCIONES, {
             method: 'POST',
+            mode: 'no-cors', // Solución para evitar bloqueos en Android
             body: JSON.stringify(compraData),
-            headers: { "Content-Type": "text/plain;charset=utf-8" } // Text plain previene errores CORS desde APK
+            headers: { "Content-Type": "text/plain;charset=utf-8" }
         });
     } catch(error) {
         console.error("Transacción guardada localmente. No se pudo enviar a la nube en este momento.");
@@ -350,6 +351,7 @@ async function exportarReporte(formato) {
     }
 }
 
+// Solución para permitir exportar archivos directo en Android
 async function compartirArchivoNativo(blob, fileName) {  
     try {  
         if (window.Capacitor && window.Capacitor.isNative) {  
@@ -366,7 +368,15 @@ async function compartirArchivoNativo(blob, fileName) {
                 text: `Se adjunta el reporte solicitado: ${fileName}`,  
                 url: writeResult.uri, dialogTitle: 'Compartir Reporte'  
             });  
-        } else {  
+        } 
+        else if (navigator.share) {
+            const file = new File([blob], fileName, { type: blob.type });
+            await navigator.share({
+                title: 'Reporte de Ventas Gift Cards',
+                files: [file]
+            });
+        }
+        else {  
             const url = URL.createObjectURL(blob); 
             const a = document.createElement("a");  
             a.href = url; a.download = fileName; 
@@ -375,5 +385,8 @@ async function compartirArchivoNativo(blob, fileName) {
             document.body.removeChild(a); 
             URL.revokeObjectURL(url);  
         }  
-    } catch (err) { alert("Hubo un error al intentar exportar el reporte."); }  
+    } catch (err) { 
+        console.error("Error al exportar:", err);
+        alert("Exportación cancelada o hubo un error al compartir el archivo."); 
+    }  
 }
