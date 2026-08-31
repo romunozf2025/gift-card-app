@@ -51,7 +51,6 @@
         }
         .btn-accion:active { transform: scale(0.95); }
 
-        /* Estilos seguros para los botones internos que genera la librería Html5QrcodeScanner */
         #reader { width: 100%; min-height: 250px; border-radius: 8px; overflow: hidden; background: #fff; }
         #reader__dashboard_section_csr button, #reader button {
             padding: 10px 15px !important; background-color: #007bff !important;
@@ -107,13 +106,11 @@
             <button id="btn-volver" onclick="cerrarHistorial()" class="btn-accion" style="display: none; background-color: #f8d7da; border-color: #f5c6cb; color: #721c24;">🔙 Volver al Escáner</button>
         </div>
 
-        <!-- PANEL DE ESCANEO -->
         <div class="panel" id="panel-escaneo">
             <h3 class="panel-titulo">Escanear Tarjeta</h3>
             <div id="reader"></div>
         </div>
 
-        <!-- PANEL DE HISTORIAL GENERAL Y REPORTES -->
         <div class="panel" id="historial-panel" style="display: none;">
             <h3 class="panel-titulo">Exportar Reporte de Ventas</h3>
             <div style="width: 100%; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px;">
@@ -123,7 +120,7 @@
                     <option value="semana">📆 Última Semana (7 días)</option>
                     <option value="quincena">🗓️ Última Quincena (15 días)</option>
                     <option value="mes">📅 Último Mes (30 días)</option>
-                    <option value="todo">📂 Historial Histórico Completo</option>
+                    <option value="todo">📂 Historial Completo</option>
                 </select>
                 <div class="export-grid">
                     <button onclick="exportarReporte('csv')" class="btn-accion" style="background-color: #28a745; color: white; border: none;">📥 Exportar CSV</button>
@@ -136,7 +133,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE COBRO E INFORMACIÓN -->
+    <!-- MODAL DE COBRO -->
     <div id="modal-overlay" class="modal-overlay">
         <div class="modal-content">
             <div id="resultado-box"></div>
@@ -150,6 +147,7 @@
                     <label for="charge-amount" style="font-size: 0.9rem; font-weight: bold;">Descontar Monto:</label>
                     <input type="number" id="charge-amount" placeholder="Ej: 100">
                     <button onclick="cobrarSaldo()" class="btn-accion" style="background-color: #007bff; border-color: #0056b3; color: white; margin-top: 10px;">Descontar Saldo</button>
+                    <button onclick="cerrarModal()" class="btn-accion" style="background-color: #6c757d; border-color: #5a6268; color: white; margin-top: 10px;">Cancelar</button>
                 </div>
             </div>
         </div>

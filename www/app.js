@@ -7,6 +7,12 @@ const modalOverlay = document.getElementById('modal-overlay');
 const resultadoBox = document.getElementById('resultado-box');
 const infoTarjetaBox = document.getElementById('info-tarjeta');
 
+// URL del CSV Original de las Tarjetas maestras
+const URL_GOOGLE_SHEET_TARJETAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjIH2cId6_HAo4GWJvSkvmmyrwabBEp0HpV59dYtEjcK4EGOONCXBJqIX87TR74v82RDPNXePuMbgi/pub?output=csv"; 
+
+// URL de tu base de datos de Transacciones (Apps Script)
+const URL_APPS_SCRIPT_TRANSACCIONES = "https://script.google.com/macros/s/AKfycbwxNNBqpiRafxS9wfg2FCKU1vBOw0A8BSwxoTBTae52SL1ydF1A1KdESpvS51g-z7vx/exec"; 
+
 window.onload = () => {
     cargarMemoriaLocal();
     iniciarLector();
@@ -23,13 +29,18 @@ function cargarMemoriaLocal() {
     }
 }
 
+// Sincronización Inteligente: Recupera Tarjetas y Transacciones
 async function sincronizarDesdeGoogle() {
-    const urlGoogleSheet = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjIH2cId6_HAo4GWJvSkvmmyrwabBEp0HpV59dYtEjcK4EGOONCXBJqIX87TR74v82RDPNXePuMbgi/pub?output=csv"; 
     try {
-        const respuesta = await fetch(urlGoogleSheet);
-        const datosCSV = await respuesta.text();
+        const btnSync = document.querySelector('button[onclick="sincronizarDesdeGoogle()"]');
+        btnSync.textContent = "Sincronizando...";
+        
+        // 1. Descargar las tarjetas maestras
+        const respuestaTarjetas = await fetch(URL_GOOGLE_SHEET_TARJETAS);
+        const datosCSV = await respuestaTarjetas.text();
         const lineas = datosCSV.replace(/\r/g, '').split('\n');
-        let agregadas = 0;
+        
+        let nuevas = 0;
 
         for (let i = 1; i < lineas.length; i++) {
             const lineaActual = lineas[i].trim();
@@ -41,7 +52,9 @@ async function sincronizarDesdeGoogle() {
                 const montoInicial = parseFloat(fila[1].trim());
                 const fechaVencimiento = fila[2].trim(); 
 
-                if (idTarjeta && !baseDeDatosTarjetas[idTarjeta]) {
+                if (idTarjeta) {
+                    if(!baseDeDatosTarjetas[idTarjeta]) nuevas++;
+                    // Reiniciamos saldos para reconstruir desde cero si reinstalamos
                     baseDeDatosTarjetas[idTarjeta] = {
                         id: idTarjeta,
                         monto_inicial: montoInicial,
@@ -49,14 +62,33 @@ async function sincronizarDesdeGoogle() {
                         vencimiento: fechaVencimiento,
                         historial_compras: []
                     };
-                    agregadas++;
                 }
             }
         }
+
+        // 2. Descargar las transacciones desde la nube (Apps Script)
+        try {
+            const respuestaTx = await fetch(URL_APPS_SCRIPT_TRANSACCIONES);
+            const transaccionesNube = await respuestaTx.json();
+            
+            // Aplicar cada compra a las tarjetas correspondientes
+            transaccionesNube.forEach(tx => {
+                if (baseDeDatosTarjetas[tx.id]) {
+                    baseDeDatosTarjetas[tx.id].historial_compras.push(tx);
+                    baseDeDatosTarjetas[tx.id].saldo_actual -= tx.monto;
+                }
+            });
+        } catch (e) {
+            console.log("No se pudieron cargar transacciones de la nube, trabajando en modo local.");
+        }
+
         localStorage.setItem('giftcardsDB', JSON.stringify(baseDeDatosTarjetas));
-        alert(`✅ Sincronización exitosa. Se añadieron ${agregadas} tarjetas nuevas.`);
+        btnSync.innerHTML = "🔄 Sincronizar Tarjetas";
+        alert(`✅ Sincronización exitosa. Base de datos actualizada con las últimas ventas en la nube.`);
+        
     } catch (error) {
-        alert("❌ Error de conexión al sincronizar con Google Sheets.");
+        alert("❌ Error de conexión al sincronizar.");
+        document.querySelector('button[onclick="sincronizarDesdeGoogle()"]').innerHTML = "🔄 Sincronizar Tarjetas";
     }
 }
 
@@ -72,11 +104,35 @@ function iniciarLector() {
 
 function onScanFailure(error) {}
 
+// Pausar cámara al escanear exitosamente
 function onScanSuccess(decodedText) {
     if (escaneoPausado) return;
     escaneoPausado = true;
+    
+    // Congela la cámara
+    if (html5QrcodeScanner) {
+        html5QrcodeScanner.pause(true); 
+    }
+    
     validarTarjeta(decodedText);
-    setTimeout(() => { escaneoPausado = false; }, 2000);
+}
+
+// Función para reanudar la cámara y cerrar la ventana
+function cerrarModal() {
+    modalOverlay.style.display = 'none';
+    tarjetaActualId = null;
+    document.getElementById('charge-amount').value = '';
+    
+    // Reactivar cámara
+    if (html5QrcodeScanner) {
+        html5QrcodeScanner.resume();
+    }
+    
+    setTimeout(() => { escaneoPausado = false; }, 1000); // 1 segundo de cooldown
+}
+
+window.onclick = function(event) {
+    if (event.target === modalOverlay) cerrarModal();
 }
 
 function validarTarjeta(textoDecodificado) {
@@ -125,7 +181,6 @@ function mostrarModal(tipo, mensaje, tarjeta) {
         document.getElementById('dato-inicial').textContent = tarjeta.monto_inicial;
         document.getElementById('dato-vencimiento').textContent = tarjeta.vencimiento;
         document.getElementById('dato-saldo').textContent = tarjeta.saldo_actual;
-        document.getElementById('charge-amount').value = '';
         infoTarjetaBox.style.display = (tarjeta.saldo_actual > 0 && tipo === 'ok') ? 'block' : 'none';
     } else {
         infoTarjetaBox.style.display = 'none';
@@ -133,7 +188,8 @@ function mostrarModal(tipo, mensaje, tarjeta) {
     modalOverlay.style.display = 'flex';
 }
 
-function cobrarSaldo() {
+// Letrero de confirmación y guardado en la nube
+async function cobrarSaldo() {
     const inputMonto = document.getElementById('charge-amount');
     const montoCobro = parseFloat(inputMonto.value);
 
@@ -143,19 +199,45 @@ function cobrarSaldo() {
     if (!montoCobro || montoCobro <= 0) return alert("Ingrese un monto válido a descontar.");
     if (montoCobro > tarjeta.saldo_actual) return alert("El monto supera el saldo disponible de la tarjeta.");
 
+    // Letrero de confirmación antes de la venta
+    const confirmar = confirm(`¿Confirmas el descuento de $${montoCobro}?\nSaldo actual: $${tarjeta.saldo_actual}\nNuevo saldo quedará en: $${tarjeta.saldo_actual - montoCobro}`);
+    if (!confirmar) return; // Si dice "Cancelar", se aborta la venta
+
     tarjeta.saldo_actual -= montoCobro;
     
-    // Se añade el timestamp matemático para poder filtrar por fechas sin errores
-    tarjeta.historial_compras.push({
-        fecha: new Date().toLocaleString(),
-        timestamp: Date.now(), 
-        monto: montoCobro
-    });
+    const fechaActual = new Date().toLocaleString();
+    const timestampActual = Date.now();
+    
+    const nuevaCompra = {
+        id: tarjeta.id,
+        fecha: fechaActual,
+        timestamp: timestampActual, 
+        monto: montoCobro,
+        saldo_restante: tarjeta.saldo_actual
+    };
+    
+    tarjeta.historial_compras.push(nuevaCompra);
 
+    // Guarda localmente inmediato por si falla el internet
     localStorage.setItem('giftcardsDB', JSON.stringify(baseDeDatosTarjetas));
+    
+    // Intentar guardar en Google Sheets en segundo plano
+    guardarEnNube(nuevaCompra);
+
     alert(`✅ Cobro exitoso. Nuevo saldo: $${tarjeta.saldo_actual}`);
-    modalOverlay.style.display = 'none';
-    tarjetaActualId = null;
+    cerrarModal(); // Cierra el modal y reactiva la cámara
+}
+
+async function guardarEnNube(compraData) {
+    try {
+        await fetch(URL_APPS_SCRIPT_TRANSACCIONES, {
+            method: 'POST',
+            body: JSON.stringify(compraData),
+            headers: { "Content-Type": "text/plain;charset=utf-8" } // Text plain previene errores CORS desde APK
+        });
+    } catch(error) {
+        console.error("Transacción guardada localmente. No se pudo enviar a la nube en este momento.");
+    }
 }
 
 function mostrarHistorial() {
@@ -191,22 +273,14 @@ function cerrarHistorial() {
     document.getElementById('historial-panel').style.display = 'none';
     document.getElementById('btn-volver').style.display = 'none';
     document.getElementById('panel-escaneo').style.display = 'block';
-    modalOverlay.style.display = 'none';
+    cerrarModal();
 }
 
-window.onclick = function(event) {
-    if (event.target === modalOverlay) modalOverlay.style.display = 'none';
-}
-
-// ----------------------------------------------------
-// SISTEMA DE EXPORTACIÓN Y FILTROS DE TIEMPO
-// ----------------------------------------------------
 async function exportarReporte(formato) {
     const filtro = document.getElementById('filtro-tiempo').value;
     const ahora = new Date();
     const limiteInicio = new Date();
     
-    // Configuración del filtro de tiempo matemático
     if (filtro === 'hoy') {
         limiteInicio.setHours(0,0,0,0);
     } else if (filtro === 'semana') {
@@ -216,7 +290,7 @@ async function exportarReporte(formato) {
     } else if (filtro === 'mes') {
         limiteInicio.setMonth(ahora.getMonth() - 1);
     } else {
-        limiteInicio.setTime(0); // Todo el historial
+        limiteInicio.setTime(0);
     }
 
     let datosReporte = [];
@@ -225,9 +299,7 @@ async function exportarReporte(formato) {
     for (const id in baseDeDatosTarjetas) {
         const tarjeta = baseDeDatosTarjetas[id];
         tarjeta.historial_compras.forEach(compra => {
-            // Evaluamos la fecha de la compra mediante el timestamp o como texto
             let fechaCompra = compra.timestamp ? new Date(compra.timestamp) : new Date();
-            
             if (fechaCompra >= limiteInicio) {
                 datosReporte.push([
                     tarjeta.id, 
@@ -278,7 +350,6 @@ async function exportarReporte(formato) {
     }
 }
 
-// Emulador Híbrido: Descarga web y puente nativo hacia Android
 async function compartirArchivoNativo(blob, fileName) {  
     try {  
         if (window.Capacitor && window.Capacitor.isNative) {  
