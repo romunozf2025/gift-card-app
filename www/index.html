@@ -4,9 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sistema de Gift Cards</title>
+    
     <script src="librerias/html5-qrcode.min.js" type="text/javascript"></script>
     <script src="librerias/jspdf.umd.min.js"></script>
     <script src="librerias/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- CAPACITOR - PUENTE NATIVO -->
+    <script src="https://unpkg.com/@capacitor/core@latest/dist/capacitor.global.js"></script>
+    <script src="https://unpkg.com/@capacitor/filesystem@latest/dist/plugin.js"></script>
+    <script src="https://unpkg.com/@capacitor/share@latest/dist/plugin.js"></script>
 
     <style>
         :root {
@@ -16,83 +22,28 @@
             --error-border: #f5c6cb; --error-text: #721c24;
         }
 
-        body {
-            font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0;
-            background-color: var(--bg-pastel); color: var(--text-color);
-            display: flex; flex-direction: column; min-height: 100vh;
-            user-select: none; -webkit-user-select: none;
-        }
-
-        header {
-            background-color: var(--card-bg); padding: 15px 20px; text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-bottom: 4px solid var(--primary-pastel);
-        }
+        body { font-family: system-ui, sans-serif; margin: 0; padding: 0; background-color: var(--bg-pastel); color: var(--text-color); display: flex; flex-direction: column; min-height: 100vh; user-select: none; }
+        header { background-color: var(--card-bg); padding: 15px 20px; text-align: center; border-bottom: 4px solid var(--primary-pastel); }
         header h2 { margin: 0; font-size: 1.4rem; }
-
-        .contenedor-principal {
-            flex: 1; display: flex; flex-direction: column; gap: 20px; padding: 20px;
-            width: 100%; max-width: 700px; margin: 0 auto; box-sizing: border-box;
-        }
-
-        .panel-config, .panel {
-            background-color: var(--card-bg); border-radius: 15px; padding: 20px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.06); text-align: center; display: flex;
-            flex-direction: column; gap: 15px; align-items: center; width: 100%; box-sizing: border-box;
-        }
-
-        .panel-titulo { margin-top: 0; text-align: center; font-size: 1.1rem; margin-bottom: 15px; }
-
-        .btn-accion {
-            display: inline-block; padding: 12px 20px; border-radius: 8px; font-weight: 600;
-            cursor: pointer; transition: 0.3s; text-align: center; width: 100%;
-            border: 2px solid; box-sizing: border-box; font-family: inherit; font-size: 1rem;
-        }
-        .btn-accion:active { transform: scale(0.95); }
-
+        .contenedor-principal { flex: 1; display: flex; flex-direction: column; gap: 20px; padding: 20px; width: 100%; max-width: 700px; margin: 0 auto; box-sizing: border-box; }
+        .panel-config, .panel { background-color: var(--card-bg); border-radius: 15px; padding: 20px; text-align: center; display: flex; flex-direction: column; gap: 15px; align-items: center; width: 100%; box-sizing: border-box; }
+        .panel-titulo { margin-top: 0; font-size: 1.1rem; margin-bottom: 15px; }
+        .btn-accion { display: inline-block; padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s; width: 100%; border: 2px solid; box-sizing: border-box; font-size: 1rem; }
         #reader { width: 100%; min-height: 250px; border-radius: 8px; overflow: hidden; background: #fff; }
-        #reader__dashboard_section_csr button, #reader button {
-            padding: 10px 15px !important; background-color: #007bff !important;
-            color: white !important; border: none !important; border-radius: 5px !important;
-            font-weight: bold !important; cursor: pointer !important; margin-top: 10px !important;
-        }
-        #reader select { padding: 8px !important; border-radius: 5px !important; margin-top: 5px !important; width: 100% !important; }
-
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(3px); 
-            display: none; justify-content: center; align-items: center; z-index: 9999; 
-        }
-
-        .modal-content {
-            background-color: var(--card-bg); width: 90%; max-width: 400px;
-            border-radius: 15px; box-shadow: 0 15px 30px rgba(0,0,0,0.3);
-            padding: 20px; animation: zoomIn 0.3s ease; text-align: center;
-        }
-
-        @keyframes zoomIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
-        #resultado-box { padding: 15px; border-radius: 8px; font-size: 1.1rem; font-weight: 600; text-align: center; margin-bottom: 10px; }
-        
-        .info-tarjeta {
-            display: none; padding: 15px; background-color: #f4f6f9;
-            border-radius: 10px; border-left: 5px solid var(--secondary-pastel); text-align: left;
-        }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 9999; }
+        .modal-content { background-color: var(--card-bg); width: 90%; max-width: 400px; border-radius: 15px; padding: 20px; text-align: center; }
+        #resultado-box { padding: 15px; border-radius: 8px; font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; }
+        .info-tarjeta { display: none; padding: 15px; background-color: #f4f6f9; border-radius: 10px; border-left: 5px solid var(--secondary-pastel); text-align: left; }
         .info-tarjeta p { margin: 8px 0; font-size: 0.95rem; }
-        
-        input[type="number"], select {
-            width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px;
-            border: 1px solid #ccc; box-sizing: border-box; font-size: 1rem;
-        }
-
+        input[type="number"], select { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 1rem; }
         .export-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 10px; }
-
-        footer { text-align: center; padding: 15px; font-size: 0.85rem; color: #6c757d; background-color: var(--card-bg); border-top: 1px solid #e9ecef; margin-top: auto; }
+        footer { text-align: center; padding: 15px; font-size: 0.85rem; color: #6c757d; background-color: var(--card-bg); margin-top: auto; }
     </style>
 </head>
 <body>
 
     <header>
-        <h2>🎁 Sistema de Gift Cards V6</h2>
+        <h2>🎁 Sistema de Gift Cards V7</h2>
     </header>
 
     <div class="contenedor-principal">
@@ -121,8 +72,8 @@
                     <option value="todo">📂 Historial Histórico Completo</option>
                 </select>
                 <div class="export-grid">
-                    <button onclick="exportarReporte('csv')" class="btn-accion" style="background-color: #28a745; color: white; border: none;">📥 Exportar CSV</button>
-                    <button onclick="exportarReporte('pdf')" class="btn-accion" style="background-color: #dc3545; color: white; border: none;">📄 Exportar PDF</button>
+                    <button id="btn-csv" onclick="exportarReporte('csv')" class="btn-accion" style="background-color: #28a745; color: white; border: none;">📥 Exportar CSV</button>
+                    <button id="btn-pdf" onclick="exportarReporte('pdf')" class="btn-accion" style="background-color: #dc3545; color: white; border: none;">📄 Exportar PDF</button>
                 </div>
             </div>
 
@@ -330,8 +281,7 @@
         }
 
         async function exportarReporte(formato) {
-            const botones = document.querySelectorAll('.export-grid button');
-            const btnActual = formato === 'csv' ? botones[0] : botones[1];
+            const btnActual = formato === 'csv' ? document.getElementById('btn-csv') : document.getElementById('btn-pdf');
             const textoOriginal = btnActual.innerText;
             
             btnActual.innerText = "⌛ Procesando...";
@@ -395,12 +345,10 @@
 
         async function compartirArchivoNativo(blob, fileName) {
             try {
+                // Gracias a los scripts del <head>, Capacitor ya está disponible de forma global
                 if (window.Capacitor && window.Capacitor.isNative) {
-                    
-                    // EL SECRETO REVELADO: Registramos los plugins manualmente 
-                    // para conectar directo con el APK que generó tu GitHub Action.
-                    const Filesystem = window.Capacitor.registerPlugin('Filesystem');
-                    const Share = window.Capacitor.registerPlugin('Share');
+                    const Filesystem = capacitorExports.Filesystem || window.Capacitor.Plugins.Filesystem;
+                    const Share = capacitorExports.Share || window.Capacitor.Plugins.Share;
 
                     const base64Data = await new Promise((resolve, reject) => {
                         const reader = new FileReader(); 
@@ -422,16 +370,12 @@
                         dialogTitle: 'Compartir con...'
                     });
                 } else {
-                    const file = new File([blob], fileName, { type: blob.type });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({ title: 'Reporte de Ventas', files: [file] });
-                    } else {
-                        const url = URL.createObjectURL(blob); const a = document.createElement("a");
-                        a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); 
-                        document.body.removeChild(a); URL.revokeObjectURL(url);
-                    }
+                    const url = URL.createObjectURL(blob); 
+                    const a = document.createElement("a");
+                    a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); 
+                    document.body.removeChild(a); URL.revokeObjectURL(url);
                 }
-            } catch (err) { alert("Error compartiendo: " + err.message); }
+            } catch (err) { alert("❌ Error compartiendo: " + err.message); }
         }
     </script>
 </body>
