@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sistema de Gift Cards</title>
-
-    <!-- LIBRERÍAS 100% OFFLINE (Locales) -->
     <script src="librerias/html5-qrcode.min.js" type="text/javascript"></script>
     <script src="librerias/jspdf.umd.min.js"></script>
     <script src="librerias/jspdf.plugin.autotable.min.js"></script>
@@ -94,7 +92,7 @@
 <body>
 
     <header>
-        <h2>🎁 Sistema de Gift Cards V3</h2>
+        <h2>🎁 Sistema de Gift Cards V4</h2>
     </header>
 
     <div class="contenedor-principal">
@@ -155,7 +153,6 @@
         Sistema de Gift Cards - Offline Ready
     </footer>
 
-    <!-- AQUÍ EMPIEZA EL CÓDIGO JS INTEGRADO -->
     <script>
         let baseDeDatosTarjetas = {};
         let escaneoPausado = false;
@@ -169,10 +166,7 @@
         const URL_GOOGLE_SHEET_TARJETAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjIH2cId6_HAo4GWJvSkvmmyrwabBEp0HpV59dYtEjcK4EGOONCXBJqIX87TR74v82RDPNXePuMbgi/pub?output=csv"; 
         const URL_APPS_SCRIPT_TRANSACCIONES = "https://script.google.com/macros/s/AKfycbyBlKVhSwyNxLt2xCzGRYw97Seo-9mHn0UKmFHYgdqyJ26V8wnV07ga6vuz5EzTVzU/exec"; 
 
-        window.onload = () => {
-            cargarMemoriaLocal();
-            iniciarLector();
-        };
+        window.onload = () => { cargarMemoriaLocal(); iniciarLector(); };
 
         function cargarMemoriaLocal() {
             try {
@@ -185,31 +179,23 @@
             try {
                 const btnSync = document.querySelector('button[onclick="sincronizarDesdeGoogle()"]');
                 btnSync.textContent = "Sincronizando...";
-                
                 const respuestaTarjetas = await fetch(URL_GOOGLE_SHEET_TARJETAS);
                 const datosCSV = await respuestaTarjetas.text();
                 const lineas = datosCSV.replace(/\r/g, '').split('\n');
-                
                 for (let i = 1; i < lineas.length; i++) {
                     const lineaActual = lineas[i].trim();
                     if (lineaActual === "") continue;
                     const fila = lineaActual.split(',');
                     if (fila.length >= 3) {
                         const idTarjeta = fila[0].trim();
-                        const montoInicial = parseFloat(fila[1].trim());
-                        const fechaVencimiento = fila[2].trim(); 
                         if (idTarjeta) {
                             baseDeDatosTarjetas[idTarjeta] = {
-                                id: idTarjeta,
-                                monto_inicial: montoInicial,
-                                saldo_actual: montoInicial,
-                                vencimiento: fechaVencimiento,
-                                historial_compras: []
+                                id: idTarjeta, monto_inicial: parseFloat(fila[1].trim()),
+                                saldo_actual: parseFloat(fila[1].trim()), vencimiento: fila[2].trim(), historial_compras: []
                             };
                         }
                     }
                 }
-
                 try {
                     const respuestaTx = await fetch(URL_APPS_SCRIPT_TRANSACCIONES);
                     const transaccionesNube = await respuestaTx.json();
@@ -219,12 +205,11 @@
                             baseDeDatosTarjetas[tx.id].saldo_actual -= tx.monto;
                         }
                     });
-                } catch (e) { console.log("Trabajando en modo local."); }
+                } catch (e) { console.log("Trabajando local."); }
 
                 localStorage.setItem('giftcardsDB', JSON.stringify(baseDeDatosTarjetas));
                 btnSync.innerHTML = "🔄 Sincronizar Tarjetas";
                 alert(`✅ Sincronización exitosa.`);
-                
             } catch (error) {
                 alert("❌ Error de conexión al sincronizar.");
                 document.querySelector('button[onclick="sincronizarDesdeGoogle()"]').innerHTML = "🔄 Sincronizar Tarjetas";
@@ -240,9 +225,7 @@
                 }
             } catch (e) {}
         }
-
         function onScanFailure(error) {}
-
         function onScanSuccess(decodedText) {
             if (escaneoPausado) return;
             escaneoPausado = true;
@@ -251,13 +234,11 @@
         }
 
         function cerrarModal() {
-            modalOverlay.style.display = 'none';
-            tarjetaActualId = null;
+            modalOverlay.style.display = 'none'; tarjetaActualId = null;
             document.getElementById('charge-amount').value = '';
             if (html5QrcodeScanner) html5QrcodeScanner.resume();
             setTimeout(() => { escaneoPausado = false; }, 1000);
         }
-
         window.onclick = function(event) { if (event.target === modalOverlay) cerrarModal(); }
 
         function validarTarjeta(textoDecodificado) {
@@ -267,15 +248,12 @@
                     const datosQR = JSON.parse(textoDecodificado);
                     idTarjeta = datosQR.id_tarjeta ? datosQR.id_tarjeta.toString().trim() : textoDecodificado.trim();
                 } catch (e) { idTarjeta = textoDecodificado.trim(); }
-
                 let tarjeta = baseDeDatosTarjetas[idTarjeta];
-
                 if (!tarjeta) return mostrarModal('error', '❌ Tarjeta no encontrada.', null);
                 
                 const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
                 const fechaVen = new Date(tarjeta.vencimiento + "T00:00:00");
-
-                if (hoy > fechaVen) return mostrarModal('error', `🚨 TARJETA VENCIDA<br><small>Caducó el ${tarjeta.vencimiento}</small>`, tarjeta);
+                if (hoy > fechaVen) return mostrarModal('error', `🚨 TARJETA VENCIDA`, tarjeta);
                 if (tarjeta.saldo_actual <= 0) return mostrarModal('error', `⚠️ TARJETA AGOTADA`, tarjeta);
 
                 tarjetaActualId = idTarjeta;
@@ -292,45 +270,33 @@
                 document.getElementById('dato-vencimiento').textContent = tarjeta.vencimiento;
                 document.getElementById('dato-saldo').textContent = tarjeta.saldo_actual;
                 infoTarjetaBox.style.display = (tarjeta.saldo_actual > 0 && tipo === 'ok') ? 'block' : 'none';
-            } else {
-                infoTarjetaBox.style.display = 'none';
-            }
+            } else { infoTarjetaBox.style.display = 'none'; }
             modalOverlay.style.display = 'flex';
         }
 
         async function cobrarSaldo() {
             const inputMonto = document.getElementById('charge-amount');
             const montoCobro = parseFloat(inputMonto.value);
-
             if (!tarjetaActualId || !baseDeDatosTarjetas[tarjetaActualId]) return;
             let tarjeta = baseDeDatosTarjetas[tarjetaActualId];
-
-            if (!montoCobro || montoCobro <= 0) return alert("Ingrese un monto válido a descontar.");
-            if (montoCobro > tarjeta.saldo_actual) return alert("El monto supera el saldo disponible.");
+            if (!montoCobro || montoCobro <= 0) return alert("Ingrese un monto válido.");
+            if (montoCobro > tarjeta.saldo_actual) return alert("El monto supera el saldo.");
 
             const confirmar = confirm(`¿Confirmas el descuento de $${montoCobro}?`);
             if (!confirmar) return; 
 
             tarjeta.saldo_actual -= montoCobro;
-            const nuevaCompra = {
-                id: tarjeta.id, fecha: new Date().toLocaleString(),
-                timestamp: Date.now(), monto: montoCobro, saldo_restante: tarjeta.saldo_actual
-            };
-            
+            const nuevaCompra = { id: tarjeta.id, fecha: new Date().toLocaleString(), timestamp: Date.now(), monto: montoCobro, saldo_restante: tarjeta.saldo_actual };
             tarjeta.historial_compras.push(nuevaCompra);
             localStorage.setItem('giftcardsDB', JSON.stringify(baseDeDatosTarjetas));
             guardarEnNube(nuevaCompra);
-
             alert(`✅ Cobro exitoso. Nuevo saldo: $${tarjeta.saldo_actual}`);
             cerrarModal(); 
         }
 
         async function guardarEnNube(compraData) {
             try {
-                await fetch(URL_APPS_SCRIPT_TRANSACCIONES, {
-                    method: 'POST', mode: 'no-cors', body: JSON.stringify(compraData),
-                    headers: { "Content-Type": "text/plain;charset=utf-8" }
-                });
+                await fetch(URL_APPS_SCRIPT_TRANSACCIONES, { method: 'POST', mode: 'no-cors', body: JSON.stringify(compraData), headers: { "Content-Type": "text/plain;charset=utf-8" }});
             } catch(error) {}
         }
 
@@ -338,19 +304,15 @@
             document.getElementById('panel-escaneo').style.display = 'none';
             document.getElementById('historial-panel').style.display = 'block';
             document.getElementById('btn-volver').style.display = 'block';
-
             const contenedor = document.getElementById('lista-tarjetas');
             contenedor.innerHTML = "";
-
             const keys = Object.keys(baseDeDatosTarjetas);
             if (keys.length === 0) return contenedor.innerHTML = "<p>Sin tarjetas registradas.</p>";
 
             keys.forEach(k => {
                 const t = baseDeDatosTarjetas[k];
                 let historialHtml = t.historial_compras.length > 0 
-                    ? "<ul>" + t.historial_compras.map(c => `<li>${c.fecha}: -$${c.monto}</li>`).join('') + "</ul>" 
-                    : "<i>Sin movimientos</i>";
-
+                    ? "<ul>" + t.historial_compras.map(c => `<li>${c.fecha}: -$${c.monto}</li>`).join('') + "</ul>" : "<i>Sin movimientos</i>";
                 const div = document.createElement('div');
                 div.style.cssText = "border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; border-radius: 8px; background: #fafafa;";
                 div.innerHTML = `<strong>Tarjeta: ${t.id}</strong><br>Monto Inicial: $${t.monto_inicial} | Vence: ${t.vencimiento}<br>
@@ -371,7 +333,6 @@
             const botones = document.querySelectorAll('.export-grid button');
             const btnActual = formato === 'csv' ? botones[0] : botones[1];
             const textoOriginal = btnActual.innerText;
-            
             btnActual.innerText = "⌛ Procesando...";
             btnActual.disabled = true;
 
@@ -400,18 +361,13 @@
                     });
                 }
 
-                if (datosReporte.length === 0) {
-                    alert("No hay transacciones registradas en este periodo.");
-                    return;
-                }
-
+                if (datosReporte.length === 0) return alert("No hay transacciones registradas en este periodo.");
                 const fileName = `Reporte_GiftCards_${filtro}_${ahora.getTime()}`;
 
                 if (formato === 'csv') {
                     let csvContent = "ID Tarjeta,Fecha de Compra,Monto Descontado,Saldo Restante\n";
                     datosReporte.forEach(row => { csvContent += `"${row[0]}","${row[1]}","${row[2]}","${row[3]}"\n`; });
                     csvContent += `\n,,TOTAL DESCONTADO:, "$${totalDescontado.toFixed(2)}"\n`;
-                    
                     const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
                     const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
                     await compartirArchivoNativo(blob, `${fileName}.csv`);
@@ -419,17 +375,9 @@
                     if (!window.jspdf) throw new Error('Librería jsPDF no detectada.');
                     const { jsPDF } = window.jspdf;
                     const doc = new jsPDF();
-                    
-                    doc.setFontSize(16); doc.text(`Reporte de Ventas Gift Cards (${filtro.toUpperCase()})`, 14, 15);
-                    doc.setFontSize(10); doc.setTextColor(100);
-                    doc.text(`Generado: ${ahora.toLocaleString()}`, 14, 22);
-                    doc.text(`Total Generado: $${totalDescontado.toFixed(2)}`, 14, 28);
-
-                    doc.autoTable({
-                        startY: 32, head: [['ID Tarjeta', 'Fecha', 'Descontado', 'Saldo Restante']],
-                        body: datosReporte, theme: 'striped', headStyles: { fillColor: [0, 123, 255] } 
-                    });
-
+                    doc.setFontSize(16); doc.text(`Reporte de Ventas Gift Cards`, 14, 15);
+                    doc.setFontSize(10); doc.text(`Generado: ${ahora.toLocaleString()}`, 14, 22);
+                    doc.autoTable({ startY: 28, head: [['ID Tarjeta', 'Fecha', 'Descontado', 'Saldo']], body: datosReporte, theme: 'striped' });
                     const pdfBuffer = doc.output('arraybuffer');
                     const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
                     await compartirArchivoNativo(blob, `${fileName}.pdf`);
@@ -445,9 +393,6 @@
         async function compartirArchivoNativo(blob, fileName) {
             try {
                 if (window.Capacitor && window.Capacitor.isNative) {
-                    if (!window.Capacitor.Plugins.Filesystem || !window.Capacitor.Plugins.Share) {
-                        throw new Error("Plugins nativos ausentes en el APK.");
-                    }
                     const base64Data = await new Promise((resolve, reject) => {
                         const reader = new FileReader(); 
                         reader.onerror = () => reject(new Error("Error leyendo el archivo."));
@@ -458,12 +403,18 @@
                     const Filesystem = window.Capacitor.Plugins.Filesystem;
                     const Share = window.Capacitor.Plugins.Share;
                     
-                    const writeResult = await Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' });
+                    // ESCUDO ANTI-CONGELAMIENTO (Lanzará error si el APK se armó sin el package.json actualizado)
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("El celular ignoró la orden. Faltan los plugins en package.json")), 4000));
                     
-                    await Share.share({
-                        title: 'Reporte de Ventas', text: `Adjunto el reporte de Gift Cards.`,
-                        url: writeResult.uri, dialogTitle: 'Compartir con...'
-                    });
+                    const writeResult = await Promise.race([
+                        Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' }),
+                        timeout
+                    ]);
+                    
+                    await Promise.race([
+                        Share.share({ title: 'Reporte de Ventas', text: `Adjunto reporte de Gift Cards.`, url: writeResult.uri, dialogTitle: 'Compartir...' }),
+                        timeout
+                    ]);
                 } else {
                     const file = new File([blob], fileName, { type: blob.type });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -474,7 +425,7 @@
                         document.body.removeChild(a); URL.revokeObjectURL(url);
                     }
                 }
-            } catch (err) { throw new Error("Error compartiendo: " + err.message); }
+            } catch (err) { throw new Error(err.message); }
         }
     </script>
 </body>
