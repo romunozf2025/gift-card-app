@@ -9,11 +9,6 @@
     <script src="librerias/jspdf.umd.min.js"></script>
     <script src="librerias/jspdf.plugin.autotable.min.js"></script>
 
-    <!-- CAPACITOR - PUENTE NATIVO -->
-    <script src="https://unpkg.com/@capacitor/core@latest/dist/capacitor.global.js"></script>
-    <script src="https://unpkg.com/@capacitor/filesystem@latest/dist/plugin.js"></script>
-    <script src="https://unpkg.com/@capacitor/share@latest/dist/plugin.js"></script>
-
     <style>
         :root {
             --bg-pastel: #fdfbf7; --primary-pastel: #a3c4f3; --secondary-pastel: #f1c0e8;
@@ -43,7 +38,7 @@
 <body>
 
     <header>
-        <h2>🎁 Sistema de Gift Cards V7</h2>
+        <h2>🎁 Sistema de Gift Cards V8</h2>
     </header>
 
     <div class="contenedor-principal">
@@ -345,10 +340,11 @@
 
         async function compartirArchivoNativo(blob, fileName) {
             try {
-                // Gracias a los scripts del <head>, Capacitor ya está disponible de forma global
                 if (window.Capacitor && window.Capacitor.isNative) {
-                    const Filesystem = capacitorExports.Filesystem || window.Capacitor.Plugins.Filesystem;
-                    const Share = capacitorExports.Share || window.Capacitor.Plugins.Share;
+                    
+                    // Puente V8 Definitivo: Capacitor moderno registra los plugins a través del objeto Plugins o registerPlugin
+                    const Filesystem = window.Capacitor.Plugins.Filesystem || window.Capacitor.registerPlugin('Filesystem');
+                    const Share = window.Capacitor.Plugins.Share || window.Capacitor.registerPlugin('Share');
 
                     const base64Data = await new Promise((resolve, reject) => {
                         const reader = new FileReader(); 
