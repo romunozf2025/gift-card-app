@@ -1,3 +1,4 @@
+// ACTUALIZACIÓN FORZADA V2
 let baseDeDatosTarjetas = {};
 let escaneoPausado = false;
 let html5QrcodeScanner = null;
