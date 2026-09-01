@@ -38,7 +38,7 @@
 <body>
 
     <header>
-        <h2>🎁 Sistema de Gift Cards V8</h2>
+        <h2>🎁 Sistema de Gift Cards V9</h2>
     </header>
 
     <div class="contenedor-principal">
@@ -282,6 +282,7 @@
             btnActual.innerText = "⌛ Procesando...";
             btnActual.disabled = true;
 
+            // Damos tiempo a la interfaz para que dibuje el botón de procesando
             await new Promise(resolve => setTimeout(resolve, 150));
 
             try {
@@ -309,7 +310,11 @@
                     });
                 }
 
-                if (datosReporte.length === 0) return alert("No hay transacciones registradas en este periodo.");
+                if (datosReporte.length === 0) {
+                    alert("No hay transacciones registradas en este periodo.");
+                    return;
+                }
+                
                 const fileName = `Reporte_GiftCards_${filtro}_${ahora.getTime()}`;
 
                 if (formato === 'csv') {
@@ -340,38 +345,52 @@
 
         async function compartirArchivoNativo(blob, fileName) {
             try {
+                // Opción A: Intentar usar Capacitor Nativo (con límite de tiempo)
                 if (window.Capacitor && window.Capacitor.isNative) {
-                    
-                    // Puente V8 Definitivo: Capacitor moderno registra los plugins a través del objeto Plugins o registerPlugin
                     const Filesystem = window.Capacitor.Plugins.Filesystem || window.Capacitor.registerPlugin('Filesystem');
                     const Share = window.Capacitor.Plugins.Share || window.Capacitor.registerPlugin('Share');
 
                     const base64Data = await new Promise((resolve, reject) => {
                         const reader = new FileReader(); 
-                        reader.onerror = () => reject(new Error("Error leyendo el archivo."));
+                        reader.onerror = () => reject(new Error("Error al convertir el archivo a Base64."));
                         reader.onload = () => resolve(reader.result.split(',')[1]);
                         reader.readAsDataURL(blob);
                     });
                     
-                    const writeResult = await Filesystem.writeFile({ 
-                        path: fileName, 
-                        data: base64Data, 
-                        directory: 'CACHE' 
-                    });
+                    // Un escudo protector de 3 segundos para que no se quede colgado
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: Capacitor no respondió a tiempo.")), 3000));
                     
-                    await Share.share({
-                        title: 'Reporte de Ventas', 
-                        text: `Adjunto el reporte de Gift Cards.`,
-                        url: writeResult.uri, 
-                        dialogTitle: 'Compartir con...'
-                    });
-                } else {
-                    const url = URL.createObjectURL(blob); 
-                    const a = document.createElement("a");
-                    a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); 
-                    document.body.removeChild(a); URL.revokeObjectURL(url);
+                    const writeResult = await Promise.race([
+                        Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' }),
+                        timeout
+                    ]);
+                    
+                    await Promise.race([
+                        Share.share({ title: 'Reporte de Ventas', text: `Reporte de Gift Cards.`, url: writeResult.uri, dialogTitle: 'Compartir reporte con...' }),
+                        timeout
+                    ]);
+                    
+                } 
+                // Opción B: Web Share API (Plan B robusto, funciona en la mayoría de Androids modernos)
+                else {
+                    const file = new File([blob], fileName, { type: blob.type });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            title: 'Reporte de Ventas',
+                            text: 'Adjunto el reporte de Gift Cards.',
+                            files: [file]
+                        });
+                    } else {
+                        // Opción C: Descarga tradicional (si nada más funciona)
+                        const url = URL.createObjectURL(blob); 
+                        const a = document.createElement("a");
+                        a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); 
+                        document.body.removeChild(a); URL.revokeObjectURL(url);
+                    }
                 }
-            } catch (err) { alert("❌ Error compartiendo: " + err.message); }
+            } catch (err) { 
+                alert("⚠️ No se pudo compartir el archivo: " + err.message); 
+            }
         }
     </script>
 </body>
