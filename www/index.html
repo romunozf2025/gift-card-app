@@ -92,7 +92,7 @@
 <body>
 
     <header>
-        <h2>🎁 Sistema de Gift Cards V4</h2>
+        <h2>🎁 Sistema de Gift Cards V5</h2>
     </header>
 
     <div class="contenedor-principal">
@@ -333,8 +333,12 @@
             const botones = document.querySelectorAll('.export-grid button');
             const btnActual = formato === 'csv' ? botones[0] : botones[1];
             const textoOriginal = btnActual.innerText;
+            
             btnActual.innerText = "⌛ Procesando...";
             btnActual.disabled = true;
+
+            // LA PAUSA MÁGICA: Le da tiempo al celular de dibujar el texto antes de colapsar
+            await new Promise(resolve => setTimeout(resolve, 150));
 
             try {
                 const filtro = document.getElementById('filtro-tiempo').value;
@@ -393,6 +397,9 @@
         async function compartirArchivoNativo(blob, fileName) {
             try {
                 if (window.Capacitor && window.Capacitor.isNative) {
+                    if (!window.Capacitor.Plugins.Filesystem || !window.Capacitor.Plugins.Share) {
+                        throw new Error("Tus plugins nativos no fueron empaquetados. Revisa el package.json antes de subir a GitHub.");
+                    }
                     const base64Data = await new Promise((resolve, reject) => {
                         const reader = new FileReader(); 
                         reader.onerror = () => reject(new Error("Error leyendo el archivo."));
@@ -403,27 +410,19 @@
                     const Filesystem = window.Capacitor.Plugins.Filesystem;
                     const Share = window.Capacitor.Plugins.Share;
                     
-                    // ESCUDO ANTI-CONGELAMIENTO (Lanzará error si el APK se armó sin el package.json actualizado)
-                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("El celular ignoró la orden. Faltan los plugins en package.json")), 4000));
+                    const writeResult = await Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' });
                     
-                    const writeResult = await Promise.race([
-                        Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' }),
-                        timeout
-                    ]);
-                    
-                    await Promise.race([
-                        Share.share({ title: 'Reporte de Ventas', text: `Adjunto reporte de Gift Cards.`, url: writeResult.uri, dialogTitle: 'Compartir...' }),
-                        timeout
-                    ]);
+                    await Share.share({
+                        title: 'Reporte de Ventas', text: `Adjunto el reporte de Gift Cards.`,
+                        url: writeResult.uri, dialogTitle: 'Compartir con...'
+                    });
                 } else {
-                    const file = new File([blob], fileName, { type: blob.type });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({ title: 'Reporte de Ventas', files: [file] });
-                    } else {
-                        const url = URL.createObjectURL(blob); const a = document.createElement("a");
-                        a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); 
-                        document.body.removeChild(a); URL.revokeObjectURL(url);
-                    }
+                    // ESCUDO DE DIAGNÓSTICO
+                    alert("⚠️ ALERTA DE ENTORNO: La aplicación no detectó las herramientas nativas. Esto suele ocurrir si los plugins de archivos no están registrados en el package.json de tu proyecto al compilar. Se intentará descargar como web.");
+                    
+                    const url = URL.createObjectURL(blob); const a = document.createElement("a");
+                    a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); 
+                    document.body.removeChild(a); URL.revokeObjectURL(url);
                 }
             } catch (err) { throw new Error(err.message); }
         }
