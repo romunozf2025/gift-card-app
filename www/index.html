@@ -46,7 +46,7 @@
 <body>
 
     <header>
-        <h2>🎁 Sistema de Gift Cards V12</h2>
+        <h2>🎁 Sistema de Gift Cards V13</h2>
     </header>
 
     <div class="contenedor-principal">
@@ -284,12 +284,6 @@
         }
 
         async function exportarReporte(formato) {
-            const btnActual = formato === 'csv' ? document.getElementById('btn-csv') : document.getElementById('btn-pdf');
-            const textoOriginal = btnActual.innerText;
-            
-            btnActual.innerText = "⌛ Procesando...";
-            btnActual.disabled = true;
-
             try {
                 const filtro = document.getElementById('filtro-tiempo').value;
                 const ahora = new Date();
@@ -319,8 +313,6 @@
 
                 if (datosReporte.length === 0) {
                     alert("No hay transacciones registradas en este periodo.");
-                    btnActual.innerText = textoOriginal;
-                    btnActual.disabled = false;
                     return;
                 }
                 
@@ -334,7 +326,6 @@
                     const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
                     await compartirArchivoNativo(blob, `${fileName}.csv`);
                 } else {
-                    if (!window.jspdf) throw new Error('Librería jsPDF no detectada.');
                     const { jsPDF } = window.jspdf;
                     const doc = new jsPDF();
                     doc.setFontSize(16); doc.text(`Reporte de Ventas Gift Cards`, 14, 15);
@@ -346,63 +337,47 @@
                 }
             } catch (error) {
                 alert("❌ Error interno: " + error.message);
-            } finally {
-                btnActual.innerText = textoOriginal;
-                btnActual.disabled = false;
             }
         }
 
-        // MOTOR DE EXPORTACIÓN CON ALERTAS DE RASTREO
+        // FUNCIÓN V13: FORZADO EXTREMO
         async function compartirArchivoNativo(blob, fileName) {
             try {
-                alert("Paso 1: Iniciando motor de exportación...");
-
-                if (window.Capacitor && window.Capacitor.isNative) {
-                    alert("Paso 2: Entorno Android detectado. Cargando plugins...");
-                    const Filesystem = window.Capacitor.Plugins.Filesystem || window.Capacitor.registerPlugin('Filesystem');
-                    const Share = window.Capacitor.Plugins.Share || window.Capacitor.registerPlugin('Share');
-
-                    alert("Paso 3: Convirtiendo documento a datos nativos...");
-                    const base64Data = await new Promise((resolve, reject) => {
-                        const reader = new FileReader(); 
-                        reader.onerror = () => reject(new Error("Fallo al leer el archivo."));
-                        reader.onload = () => resolve(reader.result.split(',')[1]);
-                        reader.readAsDataURL(blob);
-                    });
-                    
-                    alert("Paso 4: Escribiendo en la memoria del celular...");
-                    const writeResult = await Filesystem.writeFile({ 
-                        path: fileName, 
-                        data: base64Data, 
-                        directory: 'CACHE' 
-                    });
-                    
-                    alert("Paso 5: Archivo guardado. Invocando menú de WhatsApp/Compartir...");
-                    await Share.share({
-                        title: 'Reporte de Ventas',
-                        text: 'Adjunto el reporte de las Gift Cards.',
-                        url: writeResult.uri,
-                        dialogTitle: 'Compartir con...'
-                    });
-                    
-                    alert("Paso 6: ¡Éxito total!");
-                } else {
-                    alert("Paso 2: ¡ALERTA! El celular cree que es una página web (Capacitor nativo no detectado).");
-                    const file = new File([blob], fileName, { type: blob.type });
-                    if (navigator.share) {
-                        alert("Paso 3: Intentando usar Web Share API...");
-                        await navigator.share({ title: 'Reporte', text: 'Adjunto reporte', files: [file] });
-                    } else {
-                        alert("Paso 3: Forzando descarga en computadora...");
-                        const url = URL.createObjectURL(blob); const a = document.createElement("a");
-                        a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); 
-                        document.body.removeChild(a); URL.revokeObjectURL(url);
-                    }
+                // Si la variable Capacitor no existe, el puente nunca se inyectó.
+                if (typeof window.Capacitor === 'undefined') {
+                    throw new Error("ERROR CRÍTICO: La variable 'window.Capacitor' está completamente ausente. Revisa tu archivo capacitor.config.json.");
                 }
+
+                // Forzamos la ejecución de los plugins nativos
+                const Filesystem = window.Capacitor.Plugins.Filesystem || window.Capacitor.registerPlugin('Filesystem');
+                const Share = window.Capacitor.Plugins.Share || window.Capacitor.registerPlugin('Share');
+
+                if (!Filesystem || !Share) {
+                    throw new Error("ERROR: Plugins no encontrados dentro de Capacitor.");
+                }
+
+                const base64Data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader(); 
+                    reader.onerror = () => reject(new Error("Fallo al leer el archivo."));
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.readAsDataURL(blob);
+                });
+                
+                const writeResult = await Filesystem.writeFile({ 
+                    path: fileName, 
+                    data: base64Data, 
+                    directory: 'CACHE' 
+                });
+                
+                await Share.share({
+                    title: 'Reporte de Ventas',
+                    text: 'Adjunto el reporte de las Gift Cards.',
+                    url: writeResult.uri,
+                    dialogTitle: 'Compartir con...'
+                });
+
             } catch (err) { 
-                if (err.name !== 'AbortError') {
-                    alert("❌ ERROR ENCONTRADO EN EL PROCESO:\n" + err.message); 
-                }
+                alert("❌ ERROR EN EXPORTACIÓN:\n" + err.message); 
             }
         }
     </script>
