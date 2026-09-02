@@ -406,6 +406,11 @@
                     idTarjeta = datosQR.id_tarjeta ? datosQR.id_tarjeta.toString().trim() : textoDecodificado.trim();
                 } catch (e) { idTarjeta = textoDecodificado.trim(); }
                 
+                // 🛡️ NUEVO BLINDAJE: Eliminar el ".0" si Python lo agregó por error
+                if (idTarjeta.endsWith(".0")) {
+                    idTarjeta = idTarjeta.slice(0, -2);
+                }
+                
                 let tarjeta = baseDeDatosTarjetas[idTarjeta];
                 if (!tarjeta) return mostrarModal('error', '❌ Tarjeta no encontrada.', null);
                 
