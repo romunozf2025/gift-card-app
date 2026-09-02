@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sistema de Gift Cards</title>
     
+    <!-- Librerías locales -->
     <script src="librerias/html5-qrcode.min.js" type="text/javascript"></script>
     <script src="librerias/jspdf.umd.min.js"></script>
     <script src="librerias/jspdf.plugin.autotable.min.js"></script>
@@ -38,7 +39,7 @@
 <body>
 
     <header>
-        <h2>🎁 Sistema de Gift Cards V9</h2>
+        <h2>🎁 Sistema de Gift Cards V10</h2>
     </header>
 
     <div class="contenedor-principal">
@@ -282,9 +283,6 @@
             btnActual.innerText = "⌛ Procesando...";
             btnActual.disabled = true;
 
-            // Damos tiempo a la interfaz para que dibuje el botón de procesando
-            await new Promise(resolve => setTimeout(resolve, 150));
-
             try {
                 const filtro = document.getElementById('filtro-tiempo').value;
                 const ahora = new Date();
@@ -345,51 +343,31 @@
 
         async function compartirArchivoNativo(blob, fileName) {
             try {
-                // Opción A: Intentar usar Capacitor Nativo (con límite de tiempo)
-                if (window.Capacitor && window.Capacitor.isNative) {
-                    const Filesystem = window.Capacitor.Plugins.Filesystem || window.Capacitor.registerPlugin('Filesystem');
-                    const Share = window.Capacitor.Plugins.Share || window.Capacitor.registerPlugin('Share');
+                const file = new File([blob], fileName, { type: blob.type });
 
-                    const base64Data = await new Promise((resolve, reject) => {
-                        const reader = new FileReader(); 
-                        reader.onerror = () => reject(new Error("Error al convertir el archivo a Base64."));
-                        reader.onload = () => resolve(reader.result.split(',')[1]);
-                        reader.readAsDataURL(blob);
+                // Método directo y robusto (Web Share API)
+                if (navigator.share) {
+                    await navigator.share({
+                        title: 'Reporte de Ventas',
+                        text: 'Adjunto el reporte de las Gift Cards.',
+                        files: [file]
                     });
-                    
-                    // Un escudo protector de 3 segundos para que no se quede colgado
-                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: Capacitor no respondió a tiempo.")), 3000));
-                    
-                    const writeResult = await Promise.race([
-                        Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' }),
-                        timeout
-                    ]);
-                    
-                    await Promise.race([
-                        Share.share({ title: 'Reporte de Ventas', text: `Reporte de Gift Cards.`, url: writeResult.uri, dialogTitle: 'Compartir reporte con...' }),
-                        timeout
-                    ]);
-                    
-                } 
-                // Opción B: Web Share API (Plan B robusto, funciona en la mayoría de Androids modernos)
-                else {
-                    const file = new File([blob], fileName, { type: blob.type });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                            title: 'Reporte de Ventas',
-                            text: 'Adjunto el reporte de Gift Cards.',
-                            files: [file]
-                        });
-                    } else {
-                        // Opción C: Descarga tradicional (si nada más funciona)
-                        const url = URL.createObjectURL(blob); 
-                        const a = document.createElement("a");
-                        a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); 
-                        document.body.removeChild(a); URL.revokeObjectURL(url);
-                    }
+                } else {
+                    // Método de respaldo para computadora
+                    const url = URL.createObjectURL(blob); 
+                    const a = document.createElement("a");
+                    a.href = url; 
+                    a.download = fileName; 
+                    document.body.appendChild(a); 
+                    a.click(); 
+                    document.body.removeChild(a); 
+                    URL.revokeObjectURL(url);
                 }
             } catch (err) { 
-                alert("⚠️ No se pudo compartir el archivo: " + err.message); 
+                // Evitamos la alerta si el usuario simplemente cancela el menú de compartir
+                if (err.name !== 'AbortError') {
+                    alert("⚠️ Error al compartir: " + err.message); 
+                }
             }
         }
     </script>
