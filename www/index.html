@@ -25,7 +25,6 @@
         .panel-titulo { margin-top: 0; font-size: 1.1rem; margin-bottom: 15px; }
         .btn-accion { display: inline-block; padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s; width: 100%; border: 2px solid; box-sizing: border-box; font-size: 1rem; }
         
-        /* ESTILOS DEL ESCÁNER RESTAURADOS */
         #reader { width: 100%; min-height: 250px; border-radius: 8px; overflow: hidden; background: #fff; }
         #reader__dashboard_section_csr button, #reader button {
             padding: 10px 15px !important; background-color: #007bff !important;
@@ -47,7 +46,7 @@
 <body>
 
     <header>
-        <h2>🎁 Sistema de Gift Cards V11</h2>
+        <h2>🎁 Sistema de Gift Cards V12</h2>
     </header>
 
     <div class="contenedor-principal">
@@ -291,9 +290,6 @@
             btnActual.innerText = "⌛ Procesando...";
             btnActual.disabled = true;
 
-            // Damos tiempo a la interfaz para que dibuje el texto
-            await new Promise(resolve => setTimeout(resolve, 150));
-
             try {
                 const filtro = document.getElementById('filtro-tiempo').value;
                 const ahora = new Date();
@@ -313,10 +309,8 @@
                     tarjeta.historial_compras.forEach(compra => {
                         let fechaCompra = compra.timestamp ? new Date(compra.timestamp) : new Date();
                         if (fechaCompra >= limiteInicio) {
-                            // Uso de Number() para evitar que la aplicación colapse si el monto llega como texto
                             let montoSeguro = Number(compra.monto || 0).toFixed(2);
                             let saldoSeguro = Number(tarjeta.saldo_actual || 0).toFixed(2);
-                            
                             datosReporte.push([ tarjeta.id, compra.fecha, `$${montoSeguro}`, `$${saldoSeguro}` ]);
                             totalDescontado += Number(compra.monto || 0);
                         }
@@ -358,34 +352,58 @@
             }
         }
 
-        // COPIA EXACTA DE LA APP DE ASISTENCIA SIN MODIFICACIONES RIESGOSAS
+        // MOTOR DE EXPORTACIÓN CON ALERTAS DE RASTREO
         async function compartirArchivoNativo(blob, fileName) {
             try {
+                alert("Paso 1: Iniciando motor de exportación...");
+
                 if (window.Capacitor && window.Capacitor.isNative) {
+                    alert("Paso 2: Entorno Android detectado. Cargando plugins...");
+                    const Filesystem = window.Capacitor.Plugins.Filesystem || window.Capacitor.registerPlugin('Filesystem');
+                    const Share = window.Capacitor.Plugins.Share || window.Capacitor.registerPlugin('Share');
+
+                    alert("Paso 3: Convirtiendo documento a datos nativos...");
                     const base64Data = await new Promise((resolve, reject) => {
                         const reader = new FileReader(); 
-                        reader.onerror = reject;
+                        reader.onerror = () => reject(new Error("Fallo al leer el archivo."));
                         reader.onload = () => resolve(reader.result.split(',')[1]);
                         reader.readAsDataURL(blob);
                     });
-                    const Filesystem = window.Capacitor.Plugins.Filesystem;
-                    const Share = window.Capacitor.Plugins.Share;
-                    const writeResult = await Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' });
+                    
+                    alert("Paso 4: Escribiendo en la memoria del celular...");
+                    const writeResult = await Filesystem.writeFile({ 
+                        path: fileName, 
+                        data: base64Data, 
+                        directory: 'CACHE' 
+                    });
+                    
+                    alert("Paso 5: Archivo guardado. Invocando menú de WhatsApp/Compartir...");
                     await Share.share({
                         title: 'Reporte de Ventas',
-                        text: `Adjunto el reporte de ventas en formato ${fileName.split('.').pop().toUpperCase()}.`,
-                        url: writeResult.uri, dialogTitle: 'Compartir Reporte'
+                        text: 'Adjunto el reporte de las Gift Cards.',
+                        url: writeResult.uri,
+                        dialogTitle: 'Compartir con...'
                     });
+                    
+                    alert("Paso 6: ¡Éxito total!");
                 } else {
+                    alert("Paso 2: ¡ALERTA! El celular cree que es una página web (Capacitor nativo no detectado).");
                     const file = new File([blob], fileName, { type: blob.type });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({ title: 'Reporte de Ventas', files: [file] });
+                    if (navigator.share) {
+                        alert("Paso 3: Intentando usar Web Share API...");
+                        await navigator.share({ title: 'Reporte', text: 'Adjunto reporte', files: [file] });
                     } else {
+                        alert("Paso 3: Forzando descarga en computadora...");
                         const url = URL.createObjectURL(blob); const a = document.createElement("a");
-                        a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                        a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); 
+                        document.body.removeChild(a); URL.revokeObjectURL(url);
                     }
                 }
-            } catch (err) { alert("Hubo un error al intentar compartir el archivo:\n" + err.message); }
+            } catch (err) { 
+                if (err.name !== 'AbortError') {
+                    alert("❌ ERROR ENCONTRADO EN EL PROCESO:\n" + err.message); 
+                }
+            }
         }
     </script>
 </body>
