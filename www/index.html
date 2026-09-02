@@ -18,42 +18,51 @@
         }
 
         body { font-family: system-ui, sans-serif; margin: 0; padding: 0; background-color: var(--bg-pastel); color: var(--text-color); display: flex; flex-direction: column; min-height: 100vh; user-select: none; }
-        header { background-color: var(--card-bg); padding: 15px 20px; text-align: center; border-bottom: 4px solid var(--primary-pastel); }
-        header h2 { margin: 0; font-size: 1.4rem; }
+        header { background-color: var(--card-bg); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--primary-pastel); }
+        header h2 { margin: 0; font-size: 1.3rem; }
+        .btn-admin-icon { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; }
+        
         .contenedor-principal { flex: 1; display: flex; flex-direction: column; gap: 20px; padding: 20px; width: 100%; max-width: 700px; margin: 0 auto; box-sizing: border-box; }
         .panel-config, .panel { background-color: var(--card-bg); border-radius: 15px; padding: 20px; text-align: center; display: flex; flex-direction: column; gap: 15px; align-items: center; width: 100%; box-sizing: border-box; }
         .panel-titulo { margin-top: 0; font-size: 1.1rem; margin-bottom: 15px; }
         .btn-accion { display: inline-block; padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s; width: 100%; border: 2px solid; box-sizing: border-box; font-size: 1rem; }
         
         #reader { width: 100%; min-height: 250px; border-radius: 8px; overflow: hidden; background: #fff; }
-        #reader__dashboard_section_csr button, #reader button {
-            padding: 10px 15px !important; background-color: #007bff !important;
-            color: white !important; border: none !important; border-radius: 5px !important;
-            font-weight: bold !important; cursor: pointer !important; margin-top: 10px !important;
-        }
-        #reader select { padding: 8px !important; border-radius: 5px !important; margin-top: 5px !important; width: 100% !important; }
+        #reader__dashboard_section_csr button, #reader button { padding: 10px 15px !important; background-color: #007bff !important; color: white !important; border: none !important; border-radius: 5px !important; font-weight: bold !important; cursor: pointer !important; margin-top: 10px !important; }
+        #reader select, select, input[type="text"], input[type="password"], input[type="number"] { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 1rem; }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 9999; }
-        .modal-content { background-color: var(--card-bg); width: 90%; max-width: 400px; border-radius: 15px; padding: 20px; text-align: center; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 9999; overflow-y: auto;}
+        .modal-content { background-color: var(--card-bg); width: 90%; max-width: 400px; border-radius: 15px; padding: 20px; text-align: center; margin: 20px auto;}
         #resultado-box { padding: 15px; border-radius: 8px; font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; }
         .info-tarjeta { display: none; padding: 15px; background-color: #f4f6f9; border-radius: 10px; border-left: 5px solid var(--secondary-pastel); text-align: left; }
         .info-tarjeta p { margin: 8px 0; font-size: 0.95rem; }
-        input[type="number"], select { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 1rem; }
         .export-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 10px; }
         footer { text-align: center; padding: 15px; font-size: 0.85rem; color: #6c757d; background-color: var(--card-bg); margin-top: auto; }
+        
+        /* Estilos Admin */
+        .admin-section { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 15px; text-align: left; }
+        .admin-section label { font-size: 0.85rem; font-weight: bold; color: #495057; }
+        .lista-clientes-admin { max-height: 150px; overflow-y: auto; margin-top: 10px; text-align: left; font-size: 0.9rem; }
+        .item-cliente { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; }
+        .btn-delete { background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
     <header>
-        <h2>🎁 Sistema de Gift Cards V13</h2>
+        <h2>🎁 Gift Cards V15</h2>
+        <button class="btn-admin-icon" onclick="abrirModalAdmin()">⚙️</button>
     </header>
 
     <div class="contenedor-principal">
+        
         <div class="panel-config">
-            <div style="display: flex; gap: 10px; width: 100%;">
-                <button onclick="sincronizarDesdeGoogle()" class="btn-accion" style="background-color: #d4edda; border-color: #c3e6cb; color: #155724;">🔄 Sincronizar Tarjetas</button>
-                <button onclick="mostrarHistorial()" class="btn-accion" style="background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460;">📊 Resumen General</button>
+            <label for="selector-cliente-principal" style="font-weight: bold; width: 100%; text-align: left;">🏢 Cliente Activo:</label>
+            <select id="selector-cliente-principal" onchange="cambiarClienteActivo()"></select>
+
+            <div style="display: flex; gap: 10px; width: 100%; margin-top: 10px;">
+                <button onclick="sincronizarDesdeGoogle()" class="btn-accion" style="background-color: #d4edda; border-color: #c3e6cb; color: #155724;">🔄 Sincronizar</button>
+                <button onclick="mostrarHistorial()" class="btn-accion" style="background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460;">📊 Resumen</button>
             </div>
             <button id="btn-volver" onclick="cerrarHistorial()" class="btn-accion" style="display: none; background-color: #f8d7da; border-color: #f5c6cb; color: #721c24;">🔙 Volver al Escáner</button>
         </div>
@@ -66,33 +75,34 @@
         <div class="panel" id="historial-panel" style="display: none;">
             <h3 class="panel-titulo">Exportar Reporte de Ventas</h3>
             <div style="width: 100%; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px;">
-                <label for="filtro-tiempo" style="font-weight: bold; font-size: 0.9rem;">Filtrar transacciones por fecha:</label>
+                <label for="filtro-tiempo" style="font-weight: bold; font-size: 0.9rem;">Filtrar por fecha:</label>
                 <select id="filtro-tiempo">
                     <option value="hoy">📅 Solo Hoy</option>
-                    <option value="semana">📆 Última Semana (7 días)</option>
-                    <option value="quincena">🗓️ Última Quincena (15 días)</option>
-                    <option value="mes">📅 Último Mes (30 días)</option>
-                    <option value="todo">📂 Historial Histórico Completo</option>
+                    <option value="semana">📆 Última Semana</option>
+                    <option value="quincena">🗓️ Última Quincena</option>
+                    <option value="mes">📅 Último Mes</option>
+                    <option value="todo">📂 Histórico Completo</option>
                 </select>
                 <div class="export-grid">
-                    <button id="btn-csv" onclick="exportarReporte('csv')" class="btn-accion" style="background-color: #28a745; color: white; border: none;">📥 Exportar CSV</button>
-                    <button id="btn-pdf" onclick="exportarReporte('pdf')" class="btn-accion" style="background-color: #dc3545; color: white; border: none;">📄 Exportar PDF</button>
+                    <button id="btn-csv" onclick="exportarReporte('csv')" class="btn-accion" style="background-color: #28a745; color: white; border: none;">📥 CSV</button>
+                    <button id="btn-pdf" onclick="exportarReporte('pdf')" class="btn-accion" style="background-color: #dc3545; color: white; border: none;">📄 PDF</button>
                 </div>
             </div>
 
-            <h3 class="panel-titulo">Estado Actual de Tarjetas</h3>
+            <h3 class="panel-titulo">Estado de Tarjetas</h3>
             <div id="lista-tarjetas" style="width: 100%; text-align: left;"></div>
         </div>
     </div>
 
+    <!-- MODAL DE ESCANEO -->
     <div id="modal-overlay" class="modal-overlay">
         <div class="modal-content">
             <div id="resultado-box"></div>
             <div id="info-tarjeta" class="info-tarjeta">
-                <p><strong>💳 Tarjeta ID:</strong> <span id="dato-id"></span></p>
-                <p><strong>💰 Monto Inicial:</strong> $<span id="dato-inicial"></span></p>
-                <p><strong>📅 Vencimiento:</strong> <span id="dato-vencimiento"></span></p>
-                <p><strong>💵 Saldo Disponible:</strong> $<span id="dato-saldo" style="color: green; font-weight: bold;"></span></p>
+                <p><strong>💳 ID:</strong> <span id="dato-id"></span></p>
+                <p><strong>💰 Inicial:</strong> $<span id="dato-inicial"></span></p>
+                <p><strong>📅 Vence:</strong> <span id="dato-vencimiento"></span></p>
+                <p><strong>💵 Saldo:</strong> $<span id="dato-saldo" style="color: green; font-weight: bold;"></span></p>
                 
                 <div style="margin-top: 15px; border-top: 1px solid #dee2e6; padding-top: 10px;">
                     <label for="charge-amount" style="font-size: 0.9rem; font-weight: bold;">Descontar Monto:</label>
@@ -100,42 +110,227 @@
                     <button onclick="cobrarSaldo()" class="btn-accion" style="background-color: #007bff; border-color: #0056b3; color: white; margin-top: 10px;">Descontar Saldo</button>
                 </div>
             </div>
+            <button onclick="cerrarModal()" class="btn-accion" style="margin-top: 15px; background: #eee; border: 1px solid #ccc;">Cerrar</button>
         </div>
     </div>
 
-    <footer>
-        Sistema de Gift Cards - Offline Ready
-    </footer>
+    <!-- MODAL DE ADMINISTRADOR -->
+    <div id="modal-admin" class="modal-overlay">
+        <div class="modal-content" style="text-align: left;">
+            <h3 style="margin-top: 0; text-align: center;">⚙️ Administración</h3>
+            
+            <div id="admin-login">
+                <label>Contraseña:</label>
+                <input type="password" id="admin-pass" placeholder="••••••••">
+                <button onclick="verificarAdmin()" class="btn-accion" style="background: #343a40; color: white; margin-top: 15px; border: none;">Entrar</button>
+                <button onclick="cerrarAdmin()" class="btn-accion" style="background: #eee; border: 1px solid #ccc; margin-top: 10px;">Cancelar</button>
+            </div>
+
+            <div id="admin-panel" style="display: none;">
+                <div class="admin-section">
+                    <label>➕ Nuevo Cliente</label>
+                    <input type="text" id="nuevo-nombre" placeholder="Nombre del negocio">
+                    <input type="text" id="nuevo-csv" placeholder="Enlace Google Sheets (CSV) para Leer">
+                    <input type="text" id="nuevo-script" placeholder="Enlace Apps Script (EXEC) para Escribir">
+                    <button onclick="guardarNuevoCliente()" class="btn-accion" style="background: #28a745; color: white; margin-top: 10px; border: none;">Guardar Cliente</button>
+                </div>
+
+                <div class="admin-section">
+                    <label>🗑️ Clientes Instalados</label>
+                    <div id="lista-clientes-admin" class="lista-clientes-admin"></div>
+                </div>
+
+                <button onclick="cerrarAdmin()" class="btn-accion" style="background: #eee; border: 1px solid #ccc; margin-top: 10px;">Cerrar y Recargar</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>Sistema de Gift Cards - SaaS Offline Ready</footer>
 
     <script>
+        // ==========================================
+        // ⚙️ CONFIGURACIÓN DEL SISTEMA HÍBRIDO
+        // ==========================================
+        const PASSWORD_ADMIN = "admin123";
+        const CLIENTE_PRINCIPAL_NOMBRE = "Mi Negocio (Principal)";
+        const CLIENTE_PRINCIPAL_DATOS = {
+            csv: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjIH2cId6_HAo4GWJvSkvmmyrwabBEp0HpV59dYtEjcK4EGOONCXBJqIX87TR74v82RDPNXePuMbgi/pub?output=csv",
+            script: "https://script.google.com/macros/s/AKfycbyBlKVhSwyNxLt2xCzGRYw97Seo-9mHn0UKmFHYgdqyJ26V8wnV07ga6vuz5EzTVzU/exec"
+        };
+
+        // VARIABLES GLOBALES MULTI-CLIENTE
+        let catalogoClientes = {};
+        let clienteActivo = "";
         let baseDeDatosTarjetas = {};
+        
         let escaneoPausado = false;
         let html5QrcodeScanner = null;
         let tarjetaActualId = null;
 
         const modalOverlay = document.getElementById('modal-overlay');
+        const modalAdmin = document.getElementById('modal-admin');
         const resultadoBox = document.getElementById('resultado-box');
         const infoTarjetaBox = document.getElementById('info-tarjeta');
 
-        const URL_GOOGLE_SHEET_TARJETAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjIH2cId6_HAo4GWJvSkvmmyrwabBEp0HpV59dYtEjcK4EGOONCXBJqIX87TR74v82RDPNXePuMbgi/pub?output=csv"; 
-        const URL_APPS_SCRIPT_TRANSACCIONES = "https://script.google.com/macros/s/AKfycbyBlKVhSwyNxLt2xCzGRYw97Seo-9mHn0UKmFHYgdqyJ26V8wnV07ga6vuz5EzTVzU/exec"; 
+        window.onload = () => { 
+            cargarCatalogo();
+            iniciarLector(); 
+        };
 
-        window.onload = () => { cargarMemoriaLocal(); iniciarLector(); };
-
-        function cargarMemoriaLocal() {
+        function cargarCatalogo() {
+            // 1. Cargamos de la memoria interna
             try {
-                const guardadas = localStorage.getItem('giftcardsDB');
+                const catGuardado = localStorage.getItem('giftcardsClientes');
+                if (catGuardado) {
+                    catalogoClientes = JSON.parse(catGuardado);
+                }
+            } catch (e) { catalogoClientes = {}; }
+
+            // 2. INYECCIÓN DEL SISTEMA: Tu negocio siempre existirá, pase lo que pase
+            catalogoClientes[CLIENTE_PRINCIPAL_NOMBRE] = CLIENTE_PRINCIPAL_DATOS;
+
+            // 3. Revisamos qué cliente estaba seleccionado la última vez
+            clienteActivo = localStorage.getItem('giftcardsClienteActivo') || CLIENTE_PRINCIPAL_NOMBRE;
+            
+            // Si por error se seleccionó un cliente que ya no existe, volvemos al principal
+            if (!catalogoClientes[clienteActivo]) {
+                clienteActivo = CLIENTE_PRINCIPAL_NOMBRE;
+                localStorage.setItem('giftcardsClienteActivo', clienteActivo);
+            }
+
+            actualizarSelectorPrincipal();
+            cargarMemoriaLocal();
+        }
+
+        function actualizarSelectorPrincipal() {
+            const selector = document.getElementById('selector-cliente-principal');
+            selector.innerHTML = "";
+            const clientes = Object.keys(catalogoClientes);
+            
+            selector.disabled = false;
+            clientes.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c;
+                option.textContent = c;
+                if (c === clienteActivo) option.selected = true;
+                selector.appendChild(option);
+            });
+        }
+
+        function cambiarClienteActivo() {
+            clienteActivo = document.getElementById('selector-cliente-principal').value;
+            localStorage.setItem('giftcardsClienteActivo', clienteActivo);
+            cargarMemoriaLocal(); 
+            alert(`🔄 Cambiado al entorno de: ${clienteActivo}`);
+        }
+
+        // ==========================================
+        // 🔐 FUNCIONES DEL PANEL ADMINISTRADOR
+        // ==========================================
+        function abrirModalAdmin() {
+            document.getElementById('admin-pass').value = "";
+            document.getElementById('admin-login').style.display = "block";
+            document.getElementById('admin-panel').style.display = "none";
+            modalAdmin.style.display = 'flex';
+        }
+
+        function cerrarAdmin() {
+            modalAdmin.style.display = 'none';
+            cargarCatalogo(); 
+        }
+
+        function verificarAdmin() {
+            if (document.getElementById('admin-pass').value === PASSWORD_ADMIN) {
+                document.getElementById('admin-login').style.display = "none";
+                document.getElementById('admin-panel').style.display = "block";
+                renderizarListaAdmin();
+            } else {
+                alert("❌ Contraseña incorrecta");
+            }
+        }
+
+        function guardarNuevoCliente() {
+            const nombre = document.getElementById('nuevo-nombre').value.trim();
+            const csv = document.getElementById('nuevo-csv').value.trim();
+            const script = document.getElementById('nuevo-script').value.trim();
+
+            if (!nombre || !csv || !script) return alert("Llena todos los campos.");
+            
+            if (nombre === CLIENTE_PRINCIPAL_NOMBRE) return alert("Ese nombre está reservado para el sistema principal.");
+
+            catalogoClientes[nombre] = { csv: csv, script: script };
+            localStorage.setItem('giftcardsClientes', JSON.stringify(catalogoClientes));
+            
+            document.getElementById('nuevo-nombre').value = "";
+            document.getElementById('nuevo-csv').value = "";
+            document.getElementById('nuevo-script').value = "";
+            
+            alert(`✅ Cliente ${nombre} agregado.`);
+            renderizarListaAdmin();
+        }
+
+        function eliminarCliente(nombre) {
+            if (nombre === CLIENTE_PRINCIPAL_NOMBRE) {
+                return alert("No puedes borrar tu negocio principal del sistema.");
+            }
+
+            if(confirm(`¿Seguro que deseas eliminar a ${nombre}?`)) {
+                delete catalogoClientes[nombre];
+                localStorage.setItem('giftcardsClientes', JSON.stringify(catalogoClientes));
+                
+                if (clienteActivo === nombre) {
+                    clienteActivo = CLIENTE_PRINCIPAL_NOMBRE;
+                    localStorage.setItem('giftcardsClienteActivo', clienteActivo);
+                }
+                renderizarListaAdmin();
+            }
+        }
+
+        function renderizarListaAdmin() {
+            const div = document.getElementById('lista-clientes-admin');
+            div.innerHTML = "";
+            Object.keys(catalogoClientes).forEach(c => {
+                let btnHtml = `<button class="btn-delete" onclick="eliminarCliente('${c}')">Borrar</button>`;
+                
+                // Blindaje extra visual: El cliente principal no se puede borrar
+                if (c === CLIENTE_PRINCIPAL_NOMBRE) {
+                    btnHtml = `<span style="font-size: 0.8rem; color: #6c757d; font-style: italic;">Fijo por sistema</span>`;
+                }
+
+                div.innerHTML += `
+                    <div class="item-cliente">
+                        <span>${c}</span>
+                        ${btnHtml}
+                    </div>`;
+            });
+        }
+
+        // ==========================================
+        // 💳 LÓGICA DE TARJETAS AISLADAS
+        // ==========================================
+        function cargarMemoriaLocal() {
+            baseDeDatosTarjetas = {};
+            if (!clienteActivo) return;
+            try {
+                const guardadas = localStorage.getItem(`giftcardsDB_${clienteActivo}`);
                 if (guardadas) baseDeDatosTarjetas = JSON.parse(guardadas);
             } catch (e) { baseDeDatosTarjetas = {}; }
         }
 
         async function sincronizarDesdeGoogle() {
+            if (!clienteActivo || !catalogoClientes[clienteActivo]) return alert("Selecciona un cliente primero.");
+            
+            const btnSync = document.querySelector('button[onclick="sincronizarDesdeGoogle()"]');
+            btnSync.textContent = "⌛ Sync...";
+            
+            const urlCSV = catalogoClientes[clienteActivo].csv;
+            const urlScript = catalogoClientes[clienteActivo].script;
+
             try {
-                const btnSync = document.querySelector('button[onclick="sincronizarDesdeGoogle()"]');
-                btnSync.textContent = "Sincronizando...";
-                const respuestaTarjetas = await fetch(URL_GOOGLE_SHEET_TARJETAS);
+                const respuestaTarjetas = await fetch(urlCSV);
                 const datosCSV = await respuestaTarjetas.text();
                 const lineas = datosCSV.replace(/\r/g, '').split('\n');
+                
                 for (let i = 1; i < lineas.length; i++) {
                     const lineaActual = lineas[i].trim();
                     if (lineaActual === "") continue;
@@ -150,8 +345,9 @@
                         }
                     }
                 }
+                
                 try {
-                    const respuestaTx = await fetch(URL_APPS_SCRIPT_TRANSACCIONES);
+                    const respuestaTx = await fetch(urlScript);
                     const transaccionesNube = await respuestaTx.json();
                     transaccionesNube.forEach(tx => {
                         if (baseDeDatosTarjetas[tx.id]) {
@@ -159,27 +355,30 @@
                             baseDeDatosTarjetas[tx.id].saldo_actual -= tx.monto;
                         }
                     });
-                } catch (e) { console.log("Trabajando local."); }
+                } catch (e) { console.log("Transacciones offine mode."); }
 
-                localStorage.setItem('giftcardsDB', JSON.stringify(baseDeDatosTarjetas));
-                btnSync.innerHTML = "🔄 Sincronizar Tarjetas";
-                alert(`✅ Sincronización exitosa.`);
+                localStorage.setItem(`giftcardsDB_${clienteActivo}`, JSON.stringify(baseDeDatosTarjetas));
+                btnSync.innerHTML = "🔄 Sincronizar";
+                alert(`✅ Sincronizado: ${clienteActivo}`);
             } catch (error) {
-                alert("❌ Error de conexión al sincronizar.");
-                document.querySelector('button[onclick="sincronizarDesdeGoogle()"]').innerHTML = "🔄 Sincronizar Tarjetas";
+                alert("❌ Error de conexión.");
+                btnSync.innerHTML = "🔄 Sincronizar";
             }
         }
 
+        // ==========================================
+        // 📷 ESCÁNER Y MODALES
+        // ==========================================
         function iniciarLector() {
             if (typeof Html5QrcodeScanner === 'undefined') return;
             try {
                 if (!html5QrcodeScanner) {
                     html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: { width: 220, height: 220 } }, false);
-                    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+                    html5QrcodeScanner.render(onScanSuccess, () => {});
                 }
             } catch (e) {}
         }
-        function onScanFailure(error) {}
+
         function onScanSuccess(decodedText) {
             if (escaneoPausado) return;
             escaneoPausado = true;
@@ -193,15 +392,20 @@
             if (html5QrcodeScanner) html5QrcodeScanner.resume();
             setTimeout(() => { escaneoPausado = false; }, 1000);
         }
-        window.onclick = function(event) { if (event.target === modalOverlay) cerrarModal(); }
 
         function validarTarjeta(textoDecodificado) {
+            if (!clienteActivo) {
+                cerrarModal();
+                return alert("Selecciona un cliente antes de escanear.");
+            }
+            
             try {
                 let idTarjeta = "";
                 try {
                     const datosQR = JSON.parse(textoDecodificado);
                     idTarjeta = datosQR.id_tarjeta ? datosQR.id_tarjeta.toString().trim() : textoDecodificado.trim();
                 } catch (e) { idTarjeta = textoDecodificado.trim(); }
+                
                 let tarjeta = baseDeDatosTarjetas[idTarjeta];
                 if (!tarjeta) return mostrarModal('error', '❌ Tarjeta no encontrada.', null);
                 
@@ -233,31 +437,40 @@
             const montoCobro = parseFloat(inputMonto.value);
             if (!tarjetaActualId || !baseDeDatosTarjetas[tarjetaActualId]) return;
             let tarjeta = baseDeDatosTarjetas[tarjetaActualId];
+            
             if (!montoCobro || montoCobro <= 0) return alert("Ingrese un monto válido.");
             if (montoCobro > tarjeta.saldo_actual) return alert("El monto supera el saldo.");
 
-            const confirmar = confirm(`¿Confirmas el descuento de $${montoCobro}?`);
-            if (!confirmar) return; 
+            if (!confirm(`¿Confirmas el descuento de $${montoCobro}?`)) return; 
 
             tarjeta.saldo_actual -= montoCobro;
             const nuevaCompra = { id: tarjeta.id, fecha: new Date().toLocaleString(), timestamp: Date.now(), monto: montoCobro, saldo_restante: tarjeta.saldo_actual };
             tarjeta.historial_compras.push(nuevaCompra);
-            localStorage.setItem('giftcardsDB', JSON.stringify(baseDeDatosTarjetas));
+            
+            localStorage.setItem(`giftcardsDB_${clienteActivo}`, JSON.stringify(baseDeDatosTarjetas));
             guardarEnNube(nuevaCompra);
+            
             alert(`✅ Cobro exitoso. Nuevo saldo: $${tarjeta.saldo_actual}`);
             cerrarModal(); 
         }
 
         async function guardarEnNube(compraData) {
+            if (!clienteActivo || !catalogoClientes[clienteActivo]) return;
+            const urlScript = catalogoClientes[clienteActivo].script;
             try {
-                await fetch(URL_APPS_SCRIPT_TRANSACCIONES, { method: 'POST', mode: 'no-cors', body: JSON.stringify(compraData), headers: { "Content-Type": "text/plain;charset=utf-8" }});
+                await fetch(urlScript, { method: 'POST', mode: 'no-cors', body: JSON.stringify(compraData), headers: { "Content-Type": "text/plain;charset=utf-8" }});
             } catch(error) {}
         }
 
+        // ==========================================
+        // 📊 HISTORIAL Y EXPORTACIÓN
+        // ==========================================
         function mostrarHistorial() {
+            if (!clienteActivo) return alert("Selecciona un cliente.");
             document.getElementById('panel-escaneo').style.display = 'none';
             document.getElementById('historial-panel').style.display = 'block';
             document.getElementById('btn-volver').style.display = 'block';
+            
             const contenedor = document.getElementById('lista-tarjetas');
             contenedor.innerHTML = "";
             const keys = Object.keys(baseDeDatosTarjetas);
@@ -267,12 +480,12 @@
                 const t = baseDeDatosTarjetas[k];
                 let historialHtml = t.historial_compras.length > 0 
                     ? "<ul>" + t.historial_compras.map(c => `<li>${c.fecha}: -$${c.monto}</li>`).join('') + "</ul>" : "<i>Sin movimientos</i>";
-                const div = document.createElement('div');
-                div.style.cssText = "border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; border-radius: 8px; background: #fafafa;";
-                div.innerHTML = `<strong>Tarjeta: ${t.id}</strong><br>Monto Inicial: $${t.monto_inicial} | Vence: ${t.vencimiento}<br>
+                contenedor.innerHTML += `
+                <div style="border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; border-radius: 8px; background: #fafafa;">
+                    <strong>Tarjeta: ${t.id}</strong><br>Monto Inicial: $${t.monto_inicial} | Vence: ${t.vencimiento}<br>
                     <span style="color: ${t.saldo_actual > 0 ? 'green' : 'red'}; font-weight: bold;">Saldo Actual: $${t.saldo_actual}</span>
-                    <div style="font-size: 0.85rem; margin-top: 5px;">Historial: ${historialHtml}</div>`;
-                contenedor.appendChild(div);
+                    <div style="font-size: 0.85rem; margin-top: 5px;">Historial: ${historialHtml}</div>
+                </div>`;
             });
         }
 
@@ -311,12 +524,11 @@
                     });
                 }
 
-                if (datosReporte.length === 0) {
-                    alert("No hay transacciones registradas en este periodo.");
-                    return;
-                }
+                if (datosReporte.length === 0) return alert("No hay transacciones registradas en este periodo.");
                 
-                const fileName = `Reporte_GiftCards_${filtro}_${ahora.getTime()}`;
+                // Evitamos espacios en el nombre del archivo
+                const nombreLimpio = clienteActivo.replace(/[^a-zA-Z0-9]/g, '');
+                const fileName = `Reporte_${nombreLimpio}_${filtro}_${ahora.getTime()}`;
 
                 if (formato === 'csv') {
                     let csvContent = "ID Tarjeta,Fecha de Compra,Monto Descontado,Saldo Restante\n";
@@ -328,57 +540,41 @@
                 } else {
                     const { jsPDF } = window.jspdf;
                     const doc = new jsPDF();
-                    doc.setFontSize(16); doc.text(`Reporte de Ventas Gift Cards`, 14, 15);
+                    doc.setFontSize(16); doc.text(`Reporte de Ventas: ${clienteActivo}`, 14, 15);
                     doc.setFontSize(10); doc.text(`Generado: ${ahora.toLocaleString()}`, 14, 22);
                     doc.autoTable({ startY: 28, head: [['ID Tarjeta', 'Fecha', 'Descontado', 'Saldo']], body: datosReporte, theme: 'striped' });
                     const pdfBuffer = doc.output('arraybuffer');
                     const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
                     await compartirArchivoNativo(blob, `${fileName}.pdf`);
                 }
-            } catch (error) {
-                alert("❌ Error interno: " + error.message);
-            }
+            } catch (error) { alert("❌ Error interno: " + error.message); }
         }
 
-        // FUNCIÓN V13: FORZADO EXTREMO
         async function compartirArchivoNativo(blob, fileName) {
             try {
-                // Si la variable Capacitor no existe, el puente nunca se inyectó.
                 if (typeof window.Capacitor === 'undefined') {
-                    throw new Error("ERROR CRÍTICO: La variable 'window.Capacitor' está completamente ausente. Revisa tu archivo capacitor.config.json.");
+                    throw new Error("ERROR: 'window.Capacitor' ausente.");
                 }
 
-                // Forzamos la ejecución de los plugins nativos
                 const Filesystem = window.Capacitor.Plugins.Filesystem || window.Capacitor.registerPlugin('Filesystem');
                 const Share = window.Capacitor.Plugins.Share || window.Capacitor.registerPlugin('Share');
 
-                if (!Filesystem || !Share) {
-                    throw new Error("ERROR: Plugins no encontrados dentro de Capacitor.");
-                }
-
                 const base64Data = await new Promise((resolve, reject) => {
                     const reader = new FileReader(); 
-                    reader.onerror = () => reject(new Error("Fallo al leer el archivo."));
+                    reader.onerror = reject;
                     reader.onload = () => resolve(reader.result.split(',')[1]);
                     reader.readAsDataURL(blob);
                 });
                 
                 const writeResult = await Filesystem.writeFile({ 
-                    path: fileName, 
-                    data: base64Data, 
-                    directory: 'CACHE' 
+                    path: fileName, data: base64Data, directory: 'CACHE' 
                 });
                 
                 await Share.share({
-                    title: 'Reporte de Ventas',
-                    text: 'Adjunto el reporte de las Gift Cards.',
-                    url: writeResult.uri,
-                    dialogTitle: 'Compartir con...'
+                    title: 'Reporte de Ventas', text: `Adjunto reporte de ${clienteActivo}.`, url: writeResult.uri, dialogTitle: 'Compartir con...'
                 });
 
-            } catch (err) { 
-                alert("❌ ERROR EN EXPORTACIÓN:\n" + err.message); 
-            }
+            } catch (err) { alert("❌ ERROR EN EXPORTACIÓN:\n" + err.message); }
         }
     </script>
 </body>
