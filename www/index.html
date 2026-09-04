@@ -175,10 +175,14 @@
         window.onload = () => { 
             cargarCatalogo();
             iniciarLector(); 
+            
+            // 🚀 NUEVO: Ocultar el Splash Screen nativo cuando la interfaz ya cargó
+            if (window.Capacitor && window.Capacitor.Plugins.SplashScreen) {
+                window.Capacitor.Plugins.SplashScreen.hide();
+            }
         };
 
         function cargarCatalogo() {
-            // 1. Cargamos de la memoria interna
             try {
                 const catGuardado = localStorage.getItem('giftcardsClientes');
                 if (catGuardado) {
@@ -186,13 +190,9 @@
                 }
             } catch (e) { catalogoClientes = {}; }
 
-            // 2. INYECCIÓN DEL SISTEMA: Tu negocio siempre existirá, pase lo que pase
             catalogoClientes[CLIENTE_PRINCIPAL_NOMBRE] = CLIENTE_PRINCIPAL_DATOS;
-
-            // 3. Revisamos qué cliente estaba seleccionado la última vez
             clienteActivo = localStorage.getItem('giftcardsClienteActivo') || CLIENTE_PRINCIPAL_NOMBRE;
             
-            // Si por error se seleccionó un cliente que ya no existe, volvemos al principal
             if (!catalogoClientes[clienteActivo]) {
                 clienteActivo = CLIENTE_PRINCIPAL_NOMBRE;
                 localStorage.setItem('giftcardsClienteActivo', clienteActivo);
@@ -255,7 +255,6 @@
             const script = document.getElementById('nuevo-script').value.trim();
 
             if (!nombre || !csv || !script) return alert("Llena todos los campos.");
-            
             if (nombre === CLIENTE_PRINCIPAL_NOMBRE) return alert("Ese nombre está reservado para el sistema principal.");
 
             catalogoClientes[nombre] = { csv: csv, script: script };
@@ -291,8 +290,6 @@
             div.innerHTML = "";
             Object.keys(catalogoClientes).forEach(c => {
                 let btnHtml = `<button class="btn-delete" onclick="eliminarCliente('${c}')">Borrar</button>`;
-                
-                // Blindaje extra visual: El cliente principal no se puede borrar
                 if (c === CLIENTE_PRINCIPAL_NOMBRE) {
                     btnHtml = `<span style="font-size: 0.8rem; color: #6c757d; font-style: italic;">Fijo por sistema</span>`;
                 }
@@ -406,7 +403,7 @@
                     idTarjeta = datosQR.id_tarjeta ? datosQR.id_tarjeta.toString().trim() : textoDecodificado.trim();
                 } catch (e) { idTarjeta = textoDecodificado.trim(); }
                 
-                // 🛡️ NUEVO BLINDAJE: Eliminar el ".0" si Python lo agregó por error
+                // 🛡️ BLINDAJE: Eliminar el ".0" si Python lo agregó por error
                 if (idTarjeta.endsWith(".0")) {
                     idTarjeta = idTarjeta.slice(0, -2);
                 }
@@ -531,7 +528,6 @@
 
                 if (datosReporte.length === 0) return alert("No hay transacciones registradas en este periodo.");
                 
-                // Evitamos espacios en el nombre del archivo
                 const nombreLimpio = clienteActivo.replace(/[^a-zA-Z0-9]/g, '');
                 const fileName = `Reporte_${nombreLimpio}_${filtro}_${ahora.getTime()}`;
 
